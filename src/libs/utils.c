@@ -1,0 +1,51 @@
+/**
+ * @file utils.c
+ * @author Denis Fekete (xfeket01@vutbr.cz)
+ * @brief 
+ * 
+ * @copyright Copyright (c) 2024
+ * 
+ */
+
+#include "utils.h"
+
+/**
+ * @brief Prints error message to the standard error ouput (stderr) and exits 
+ * program with errorCode
+ * 
+ * @param errMessage Message to be printed to the stderr
+ * @param errorCode Error code that program will exit with
+ */
+void errHandling(const char* errMessage, int errorCode)
+{
+    if(errorCode != NO_ERR)
+    {
+        fprintf(stderr, "ERR: %s\n", errMessage);
+    }
+
+    exit(errorCode);
+}
+
+/**
+ * @brief Replaces bytes in dst with bytes from src up to len lenght
+ * 
+ * @param dst Destinatin byte array
+ * @param src Source byte arry
+ * @param len Number of bytes to replace
+ */
+void stringReplace(char* dst, char* src, size_t len)
+{
+    if(dst != NULL && src != NULL)
+    {
+        for(size_t i = 0; i < len; i++)
+        {
+            dst[i] = src[i];
+        }
+        return;
+    }
+
+    #ifdef DEBUG
+        fprintf(stderr, "Error: stringReplace() received bad pointer or "
+        "invalid length (dst:%p, src:%p, len:%ld\n", dst, src, len);
+    #endif
+}
