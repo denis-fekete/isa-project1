@@ -1,5 +1,5 @@
 /**
- * @file packetDissector.c
+ * @file frameDissector.c
  * @author Denis Fekete (xfeket01@vutbr.cz)
  * @brief 
  * 
@@ -10,7 +10,7 @@
 #include "packetDissector.h"
 
 
-void packetDissector(const unsigned char* packet, size_t length)
+void frameDissector(const unsigned char* packet, size_t length)
 {     
     EthernetHeader* eth;
 

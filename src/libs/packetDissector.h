@@ -1,5 +1,5 @@
 /**
- * @file packetDissector.h
+ * @file frameDissector.h
  * @author Denis Fekete (xfeket01@vutbr.cz)
  * @brief //TODO:
  * 
@@ -51,10 +51,10 @@ typedef struct EthernetHeader
 
 // // } ipHeader;
 
-#define PROTOCOL_ICMP 0x01
-#define PROTOCOL_IGMP 0x02
 #define PROTOCOL_TCP 0x06
 #define PROTOCOL_UDP 0x11
+#define PROTOCOL_ICMP 0x01
+#define PROTOCOL_IGMP 0x02
 
 // typedef struct tcpHeader
 // {
@@ -65,7 +65,7 @@ typedef struct EthernetHeader
 //  Functions
 // ----------------------------------------------------------------------------
 
-void packetDissector(const unsigned char* packet, size_t length);
+void frameDissector(const unsigned char* packet, size_t length);
 
 void ipv4Dissector(const unsigned char* packet, size_t length);
 void icmpDissector(const unsigned char* packet, size_t length);

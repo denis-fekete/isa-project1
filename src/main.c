@@ -74,8 +74,8 @@ int main(int argc, char* argv[])
         // --------------------------------------------------------------------
         printf("timestamp:");
         printf("%ld.%06ld\n", header.ts.tv_sec, header.ts.tv_usec);
-        
-        packetDissector(packet, header.len);
+
+        frameDissector(packet, header.len);
 
         // --------------------------------------------------------------------
 
