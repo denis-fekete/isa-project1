@@ -55,6 +55,8 @@
         "inet.h": "c",
         "ether.h": "c",
         "tcp.h": "c",
-        "ip_icmp.h": "c"
-    }
+        "ip_icmp.h": "c",
+        "udp.h": "c"
+    },
+    "C_Cpp.errorSquiggles": "disabled"
 }

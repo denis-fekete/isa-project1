@@ -66,10 +66,20 @@ bool stringIsValidUInt(char* string);
 /**
  * @brief Prints hexadecimal values of byte array
  * 
- * @param packet 
- * @param len 
+ * @param byteArr pointer to the byte arrays
+ * @param len maximum length of the array
+ * @param separator character to be put between characters of byte array
  */
-void printBytes(const unsigned char* byteArr, size_t len);
+void printBytes(const unsigned char* byteArr, size_t len, char separator);
+
+/**
+ * @brief Prints characters from byte array into stdout, if
+ * character cannot be printed, print '.' instead.
+ * 
+ * @param byteArr pointer to the byte arrays
+ * @param len maximum length of the array
+ */
+void printChars(const unsigned char* byteArr, size_t len);
 
 #ifdef DEBUG
     #define debugPrint(...) \

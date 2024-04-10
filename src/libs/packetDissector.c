@@ -16,70 +16,74 @@ void frameDissector(const unsigned char* packet, size_t length)
 
     eth = (EthernetHeader *) packet;
     printf("src MAC: ");
-    printBytes(eth->dst, ETHERNET_ADDR_LEN);
+    printBytes(eth->dst, ETHERNET_ADDR_LEN, ':');
     printf("\n");
     printf("dst MAC: ");
-    printBytes(eth->src, ETHERNET_ADDR_LEN);
+    printBytes(eth->src, ETHERNET_ADDR_LEN, ':');
     printf("\n");
     printf("frame length: %li bytes\n", length);
 
-    if(eth->etherType[0] == ETHERTYPE_IPV4_HIGH && eth->etherType[1] == ETHERTYPE_IPV4_LOW)
+    unsigned char protocol;
+    switch( uchars2uint16(&(eth->etherType[0])) )
     {
-        if(1) // TODO: differ icmp from ipv4
-        {
-            ipv4Dissector(packet + sizeof(EthernetHeader), length);
-        }
-        else
-        {
-            icmpDissector(packet + sizeof(EthernetHeader), length);
-        }
-    }
-    else if (eth->etherType[0] == ETHERTYPE_IPV6_HIGH && eth->etherType[1] == ETHERTYPE_IPV6_LOW)
-    {
-        ipv6Dissector(packet + sizeof(EthernetHeader), length);
-    }
-    else if (eth->etherType[0] == ETHERTYPE_ARP_HIGH && eth->etherType[1] == ETHERTYPE_ARP_LOW)
-    {
-        arpDissector(packet + sizeof(EthernetHeader), length);
-    }
-    else
-    {
-        printf("EtherType: (%hhx %hhx)\n", eth->etherType[0], eth->etherType[1]);
-        errHandling("Unknown ether type", 9/*TODO:*/);
+        case ETH_TYPE_IPV4:
+            protocol = ipv4Dissector(packet + sizeof(EthernetHeader));
+
+            transportLayerDissector(protocol, packet + sizeof(EthernetHeader) + sizeof(struct iphdr));
+            break;
+        case ETH_TYPE_IPV6:
+            ipv6Dissector(packet + sizeof(EthernetHeader) + sizeof(struct ip6_hdr));
+            break;
+        case ETH_TYPE_ARP:
+            arpDissector(packet + sizeof(EthernetHeader) + sizeof(struct arphdr));
+            break;
+        default:
+            printf("EtherType: (%hhx %hhx)\n", eth->etherType[0], eth->etherType[1]);
+            errHandling("Unknown ether type", 9/*TODO:*/);
+            break;
     }
 
     if(length) {}
 }
 
-u_int8_t uchars2uint8(unsigned char* value)
+u_int16_t uchars2uint16(unsigned char* value)
 {
     //                  LOW         HIGH
-    return (u_int8_t) (value[1] +  (value[0] << 8)); 
+    return (u_int16_t) (value[1] +  (value[0] << 8)); 
 }
+
 
 void printIPV4(u_int32_t address)
 {
-    printf("%hu", (address >> 24) & 0xFF);
+    printf("%02hu", (address >> 24) & 0xFF);
     printf(".");
-    printf("%hu", (address >> 16) & 0xFF);
+    printf("%02hu", (address >> 16) & 0xFF);
     printf(".");
-    printf("%hu", (address >> 8) & 0xFF);
+    printf("%02hu", (address >> 8) & 0xFF);
     printf(".");
-    printf("%hu", (address >> 0) & 0xFF);
+    printf("%02hu", (address >> 0) & 0xFF);
     printf("\n");
 }
 
-void transportLayerDissector(unsigned char protocol, const unsigned char* packet, size_t length)
+void transportLayerDissector(unsigned char protocol, const unsigned char* packet)
 {
     switch (protocol)
     {
-    case PROTOCOL_UDP:
+    case PROTOCOL_UDP:;
+        struct udphdr* udp = (struct udphdr*) packet;
+        printf("src port: %u\n", ntohs(udp->uh_sport)); 
+        printf("dst port: %u\n", ntohs(udp->uh_dport)); 
         break;
-    case PROTOCOL_TCP:
+    case PROTOCOL_TCP:;
+        struct tcphdr* tcp = (struct tcphdr*) packet;
+        printf("src port: %u\n", ntohs(tcp->th_sport)); 
+        printf("dst port: %u\n", ntohs(tcp->th_dport)); 
         break;
-    case PROTOCOL_ICMP:
+    case PROTOCOL_ICMP:;
+        /* do not print anything*/
         break;
-    case PROTOCOL_IGMP:
+    case PROTOCOL_IGMP:;
+        /* do not print anything*/
         break;
     default:
         errHandling("Unknown transport layer protocol", 9/*TODO:*/);
@@ -87,7 +91,7 @@ void transportLayerDissector(unsigned char protocol, const unsigned char* packet
     }
 }
 
-void ipv4Dissector(const unsigned char* packet, size_t length)
+unsigned char ipv4Dissector(const unsigned char* packet)
 {
     struct iphdr* ipv4 = (struct iphdr*) packet;
 
@@ -98,25 +102,17 @@ void ipv4Dissector(const unsigned char* packet, size_t length)
     // print ipv4 address by bytes, need to convert it into system endian
     printIPV4(ntohl(ipv4->daddr));
 
-    transportLayerDissector(ipv4->protocol, packet + sizeof(struct iphdr), length);
-
-    if(packet && length && ipv4) {}
+    return ipv4->protocol;
 }
 
-void icmpDissector(const unsigned char* packet, size_t length)
+unsigned char ipv6Dissector(const unsigned char* packet)
 {
-    struct icmphdr* icmp = (struct icmphdr*) packet;
-    
-    if(packet && length && icmp) {}
+    if(packet ) {}
+    return 0;
 }
 
-void ipv6Dissector(const unsigned char* packet, size_t length)
+unsigned char arpDissector(const unsigned char* packet)
 {
-
-    if(packet && length) {}
-}
-
-void arpDissector(const unsigned char* packet, size_t length)
-{
-    if(packet && length) {}
+    if(packet ) {}
+    return 0;
 }

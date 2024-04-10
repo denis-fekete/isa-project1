@@ -1,3 +1,5 @@
 build
 *.o
 ipk-sniffer
+./ipk-sniffer
+./.vscode

@@ -72,16 +72,33 @@ int main(int argc, char* argv[])
         packet = pcap_next(handle, &header);
         filterPackets();
         // --------------------------------------------------------------------
-        printf("timestamp:");
+        printf("timestamp: ");
         printf("%ld.%06ld\n", header.ts.tv_sec, header.ts.tv_usec);
 
         frameDissector(packet, header.len);
 
         // --------------------------------------------------------------------
 
-        printf("\nPacket:");
-        printBytes(packet, header.len);
         printf("\n");
+        #define BYTES_PER_LINE 16
+        long long int bytesToPrint = 0;
+        for(size_t i = 16; i < header.len; i += BYTES_PER_LINE)
+        {
+            if(((long long int) header.len) -  i > 0)
+            {
+                if(BYTES_PER_LINE < header.len - i)
+                    bytesToPrint = BYTES_PER_LINE;
+                else
+                    bytesToPrint = header.len - i; 
+            }
+
+            printf("0x%04zx: ", i);
+            printBytes( packet + i, bytesToPrint, ' ');
+            printf(" ");
+            printChars( packet + i, bytesToPrint);
+            printf("\n");
+
+        }
 
         packetCounter++;
     }
