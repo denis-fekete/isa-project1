@@ -24,8 +24,16 @@
 //  Structures and enums
 // ----------------------------------------------------------------------------
 
-#define PORT_OPTIONS 0
-#define DISPLAY_OPTIONS 1
+typedef enum DisplayOptions 
+{
+    dopt_ALL,
+    dopt_ICMP4,
+    dopt_ICMP6,
+    dopt_ARP,
+    dopt_NDP,
+    dopt_IGMP,
+    dopt_MLD,
+} dopt_t; 
 
 // ----------------------------------------------------------------------------
 //  Functions

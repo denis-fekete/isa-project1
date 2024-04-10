@@ -49,3 +49,22 @@ void stringReplace(char* dst, char* src, size_t len)
         "invalid length (dst:%p, src:%p, len:%ld\n", dst, src, len);
     #endif
 }
+
+/**
+ * @brief Checks if string conteins only valid characters that can be in 
+ * usigned integer (no : '+', '-', '.', ',')
+ * 
+ * @param string Pointer to the string
+ * @return true If string can be converted to valid number
+ * @return false If string can not be converted to valid number
+ */
+bool stringIsValidUInt(char* string)
+{
+    for (size_t i = 0; string[i] != '\0'; i++)
+    {
+        if(string[i] < '0' || string[i] > '9')
+            return false; 
+    }
+    
+    return true;
+}

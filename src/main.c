@@ -33,6 +33,7 @@ int main(int argc, char* argv[])
     // ------------------------------------------------------------------------
 
     argumentHandler(argc, argv, config);
+    printConfig(config);
     exit(0);
     // ------------------------------------------------------------------------
     // Setup pcap

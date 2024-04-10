@@ -20,29 +20,22 @@
 //  Structures and enums
 // ----------------------------------------------------------------------------
 
-typedef enum DisplayOptions 
-{
-    dopt_ALL,
-    dopt_ICMP4,
-    dopt_ICMP6,
-    dopt_ARP,
-    dopt_NDP,
-    dopt_IGMP,
-    dopt_MLD,
-} dopt_t; 
-
 typedef struct ProgramConfiguration 
 {
     Buffer* interface;
     Buffer* port;
     Buffer* portSrc;
     Buffer* portDst;
-    bool enableTCP;
-    bool enableUDP;
-    enum DisplayOptions displayOptions;
     unsigned int numberOfPackets;
+    bool tcp;
+    bool udp;
+    bool icmp4;
+    bool icmp6;
+    bool arp;
+    bool ndp;
+    bool igmp;
+    bool mld;
     
-
 } Config;
 
 // ----------------------------------------------------------------------------
@@ -55,5 +48,12 @@ typedef struct ProgramConfiguration
  * @param config Pointer to the program configurations. Must be allocated
  */
 void setupConfig(Config* config);
+
+/**
+ * @brief Prints currect configuration to stdout
+ * 
+ * @param config 
+ */
+void printConfig(Config* config);
 
 #endif /*PROGRAM_CONFIG_H*/

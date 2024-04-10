@@ -7,9 +7,14 @@
  */
 void setupConfig(Config* config)
 {
-    config->enableTCP = false;
-    config->enableUDP = false;
-    config->displayOptions = dopt_ALL;
+    config->tcp = false;
+    config->udp = false;
+    config->icmp4 = false;
+    config->icmp6 = false;
+    config->arp = false;
+    config->ndp = false;
+    config->igmp = false;
+    config->mld = false;
     config->numberOfPackets = 0;
 
     config->interface = malloc(sizeof(Buffer));
@@ -43,4 +48,26 @@ void setupConfig(Config* config)
     bufferInit(config->port);
     bufferInit(config->portDst);
     bufferInit(config->portSrc);
+}
+
+#define BOOL_TO_STR(boolVal) (boolVal)? "true" : "false"
+
+/**
+ * @brief Prints currect configuration to stdout
+ * 
+ * @param config 
+ */
+void printConfig(Config* config)
+{
+    printf("Config options:\n");
+    printf("\tInterface: %s\n", config->interface->data);
+    printf("\tDst port: %s\n", config->portDst->data);
+    printf("\tSrc port: %s\n", config->portSrc->data);
+    printf("\ttcp: %s\n", BOOL_TO_STR(config->tcp));
+    printf("\tudp: %s\n", BOOL_TO_STR(config->udp));
+    printf("\tarp: %s\n", BOOL_TO_STR(config->arp));
+    printf("\tndp: %s\n", BOOL_TO_STR(config->ndp));
+    printf("\tigmp: %s\n", BOOL_TO_STR(config->igmp));
+    printf("\tmld: %s\n", BOOL_TO_STR(config->mld));
+    printf("\tNO Packets: %u\n", config->numberOfPackets);
 }

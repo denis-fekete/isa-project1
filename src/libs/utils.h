@@ -52,6 +52,16 @@ void errHandling(const char* errMessage, int errorCode);
  */
 void stringReplace(char* dst, char* src, size_t len);
 
+/**
+ * @brief Checks if string conteins only valid characters that can be in 
+ * usigned integer (no : '+', '-', '.', ',')
+ * 
+ * @param string Pointer to the string
+ * @return true If string can be converted to valid number
+ * @return false If string can not be converted to valid number
+ */
+bool stringIsValidUInt(char* string);
+
 #ifdef DEBUG
     #define debugPrint(...) \
         fprintf(__VA_ARGS__);
