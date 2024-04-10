@@ -15,7 +15,8 @@ void setupConfig(Config* config)
     config->ndp = false;
     config->igmp = false;
     config->mld = false;
-    config->numberOfPackets = 0;
+    config->numberOfPackets = 1;
+    config->useFilter = false;
 
     config->interface = malloc(sizeof(Buffer));
     if(config->interface == NULL)

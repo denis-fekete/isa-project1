@@ -9,16 +9,16 @@
 
 #include "pcapHandler.h"
 
-errCodes_t pcapSetup(Config* config, pcap_if_t** allDevices, pcap_t** handle)
+pcap_t* pcapSetup(Config* config, pcap_if_t** allDevices)
 {
     // char errbuf[PCAP_ERRBUF_SIZE];
     char* errbuf = calloc(1, PCAP_ERRBUF_SIZE);
     if(errbuf == NULL)
     {
-        fprintf(stderr, "Memory allocation for pcap error buffer failed\n");
-        // errHandling("Memory allocation for pcap error buffer failed", ERR_MALOC);
-        return ERR_MALOC;
+        errHandling("Memory allocation for pcap error buffer failed\n", ERR_MALOC);
     }
+
+    pcap_t* handle;
 
     // Get list of all devices
     int result = pcap_findalldevs( allDevices, errbuf);
@@ -26,16 +26,14 @@ errCodes_t pcapSetup(Config* config, pcap_if_t** allDevices, pcap_t** handle)
     // Check for errors
     if(result == PCAP_ERROR)
     {
-        fprintf(stderr, "Error: When looking for diveces\n");
         fprintf(stderr, "Error buffer:  %s\n", errbuf);
-        return ERR_LIBPCAP;
+        errHandling("When looking for diveces\n", ERR_LIBPCAP);
     }
 
     if(allDevices == NULL)
     {
-        fprintf(stderr, "Error: No devices found!\n");
         fprintf(stderr, "Error buffer:  %s\n", errbuf);
-        return ERR_LIBPCAP;
+        errHandling("No devices found!\n", ERR_LIBPCAP);
     }
     
     // Looking for correct device
@@ -53,24 +51,25 @@ errCodes_t pcapSetup(Config* config, pcap_if_t** allDevices, pcap_t** handle)
             pcap_freealldevs(*allDevices);
 
             // if end of list found, end with error
-            fprintf(stderr, "%s was not found\n", config->interface->data);
-            return ERR_LIBPCAP;
+            fprintf(stderr, "ERR: %s was not found\n", config->interface->data);
+            errHandling("", ERR_LIBPCAP);
         }
     }
 
     // Open live sniffing of packets
-    *handle = pcap_open_live(device->name, BUFSIZ, false, 250, errbuf);
+    handle = pcap_open_live(device->name, BUFSIZ, false, 250, errbuf);
+    
     if(handle == NULL)
     {
-        fprintf(stderr, "Couldn't open device %s: %s\n", device->name, errbuf);
-        return ERR_LIBPCAP;
+        fprintf(stderr, "ERR: Couldn't open device %s: %s\n", device->name, errbuf);
+        errHandling("", ERR_LIBPCAP);
     }
     
     // Check handle can work with ethernet (DLT_EN10MB)
-    if(pcap_datalink(*handle) != DLT_EN10MB)
+    if(pcap_datalink(handle) != DLT_EN10MB)
     {
-        fprintf(stderr, "Device %s doesn't provide Ethernet headers - not supported\n", device->name);
-        return ERR_LIBPCAP;
+        fprintf(stderr, "ERR: Device %s doesn't provide Ethernet headers - not supported\n", device->name);
+        errHandling("", ERR_LIBPCAP);
     }
 
     // Get IPv4 of device and its mask
@@ -80,25 +79,28 @@ errCodes_t pcapSetup(Config* config, pcap_if_t** allDevices, pcap_t** handle)
     {
         net = 0;
         mask = 0;
-        fprintf(stderr, "Can't get netmask for device %s\n", device->name);
-        return ERR_LIBPCAP;
+        fprintf(stderr, "ERR: Can't get netmask for device %s\n", device->name);
+        errHandling("", ERR_LIBPCAP);
     }
 
-    // Creating a filter to only look for certain traffic
-    const char filter_exp[] = "port 4567"; // Filter expression
-    struct bpf_program fp; // Stuct that holds compiled filter expression
-    if(pcap_compile(*handle, &fp, filter_exp, 0, net) == -1)
+    if(config->useFilter)
     {
-        fprintf(stderr, "Couldn't parse filter %s: %s\n", filter_exp, pcap_geterr(*handle));
-        return ERR_LIBPCAP;
-    }
+        // Creating a filter to only look for certain traffic
+        const char filter_exp[] = ""; // Filter expression
+        struct bpf_program fp; // Stuct that holds compiled filter expression
+        if(pcap_compile(handle, &fp, filter_exp, 0, net) == PCAP_ERROR)
+        {
+            fprintf(stderr, "ERR: Couldn't parse filter %s: %s\n", filter_exp, pcap_geterr(handle));
+            errHandling("", ERR_LIBPCAP);
+        }
 
-    // Set the filter
-    if(pcap_setfilter(*handle, &fp) == -1)
-    {
-        fprintf(stderr, "Couldn't install filter %s: %s\n", filter_exp, pcap_geterr(*handle));
-        return ERR_LIBPCAP;
-    }
+        // Set the filter
+        if(pcap_setfilter(handle, &fp) == -1)
+        {
+            fprintf(stderr, "ERR: Couldn't install filter %s: %s\n", filter_exp, pcap_geterr(handle));
+            errHandling("", ERR_LIBPCAP);
+        }
 
-    return NO_ERR;
+    }
+    return handle;
 }

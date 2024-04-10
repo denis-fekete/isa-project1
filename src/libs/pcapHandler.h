@@ -17,14 +17,19 @@
 #include "string.h"
 #include "sys/types.h"
 #include "pcap/pcap.h"
+#include "arpa/inet.h"
 
 #include "utils.h"
 #include "programConfig.h"
 
 // ----------------------------------------------------------------------------
+//  Structures and enums
+// ----------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------
 //  Functions
 // ----------------------------------------------------------------------------
 
-errCodes_t pcapSetup(Config* config, pcap_if_t** allDevices, pcap_t** handle);
+pcap_t* pcapSetup(Config* config, pcap_if_t** allDevices);
 
 #endif /*PCAP_HANDLER_H*/

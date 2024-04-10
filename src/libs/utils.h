@@ -27,7 +27,8 @@ typedef enum ErrorCodes
     ERR_INTERNAL,
     ERR_MALOC,
     ERR_LIBPCAP,
-    ERR_UNKNOWN_ARG
+    ERR_UNKNOWN_ARG,
+    ERR_BAD_ARGS
 } errCodes_t;
 
 // ----------------------------------------------------------------------------
@@ -61,6 +62,14 @@ void stringReplace(char* dst, char* src, size_t len);
  * @return false If string can not be converted to valid number
  */
 bool stringIsValidUInt(char* string);
+
+/**
+ * @brief Prints hexadecimal values of byte array
+ * 
+ * @param packet 
+ * @param len 
+ */
+void printBytes(const unsigned char* byteArr, size_t len);
 
 #ifdef DEBUG
     #define debugPrint(...) \

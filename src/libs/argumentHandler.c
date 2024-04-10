@@ -47,9 +47,11 @@ void argumentHandler(int argc, char* argv[], Config* config)
     size_t optLen;
     int options_index;
 
+    int counter = 0; // counter for setting config->useFilter
     // \0 == PORT_OPTIONS, \1 DISPLAY_OPTIONS
     while((opt = getopt_long(argc, argv, "htui:n:p:", long_options, &options_index)) != -1)
     {
+        counter++;
         switch (opt)
         {
             case DST_PORT_OPT:
@@ -58,6 +60,7 @@ void argumentHandler(int argc, char* argv[], Config* config)
                 stringReplace(config->portDst->data, optarg, optLen);
                 config->portDst->data[optLen] = '\0';
                 config->portDst->used = optLen + 1;
+                config->useFilter = false;
                 break;
             case SRC_PORT_OPT:
                 optLen = strlen(optarg);
@@ -99,10 +102,12 @@ void argumentHandler(int argc, char* argv[], Config* config)
                 stringReplace(config->interface->data, optarg, optLen);
                 config->interface->data[optLen] = '\0';
                 config->interface->used = optLen + 1;
+                counter--; // decrease counter because this doesnt count as no filter
                 break;
             case 'h':
                 printCliHelpMenu("ipk-sniffer");
                 errHandling("", 0);
+                counter--; // decrease counter because this doesnt count as no filter
                 break;
             case 'n':
                 // TODO: add some checking for valid numbers
@@ -110,11 +115,24 @@ void argumentHandler(int argc, char* argv[], Config* config)
                     config->numberOfPackets = atoi(optarg);
                 else
                     errHandling("TODO:", 1);
+                counter--; // decrease counter because this doesnt count as no filter
                 break;
             default:
                 errHandling("Unknown option. Use -h for help", ERR_UNKNOWN_ARG);
                 break;
         }
+    }
+
+    // check if useFilter should be set based on arguments
+    if(counter != 0)
+    {
+        config->useFilter = true;
+    }
+
+    // Check mandatory arguments
+    if(config->interface->data == NULL)
+    {
+        errHandling("Interface not provided", ERR_BAD_ARGS);
     }
 }
 

@@ -7,6 +7,7 @@
  * 
  */
 
+#include "string.h"
 #include "utils.h"
 
 /**
@@ -20,7 +21,11 @@ void errHandling(const char* errMessage, int errorCode)
 {
     if(errorCode != NO_ERR)
     {
-        fprintf(stderr, "ERR: %s\n", errMessage);
+        // filter out empty messages
+        if(strcmp(errMessage, "") != 0)
+        {
+            fprintf(stderr, "ERR: %s\n", errMessage);
+        }
     }
 
     exit(errorCode);
@@ -67,4 +72,18 @@ bool stringIsValidUInt(char* string)
     }
     
     return true;
+}
+
+/**
+ * @brief Prints hexadecimal values of byte array
+ * 
+ * @param packet 
+ * @param len 
+ */
+void printBytes(const unsigned char* byteArr, size_t len)
+{
+    for(size_t i = 0; i < len; i++)
+    {
+        printf("%hhx ", (unsigned char) byteArr[i]);
+    }
 }

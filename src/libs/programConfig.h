@@ -35,6 +35,7 @@ typedef struct ProgramConfiguration
     bool ndp;
     bool igmp;
     bool mld;
+    bool useFilter;
     
 } Config;
 

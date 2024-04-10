@@ -51,6 +51,10 @@
         "utils.h": "c",
         "stdio.h": "c",
         "pcaphandler.h": "c",
-        "programconfig.h": "c"
+        "programconfig.h": "c",
+        "inet.h": "c",
+        "ether.h": "c",
+        "tcp.h": "c",
+        "ip_icmp.h": "c"
     }
 }

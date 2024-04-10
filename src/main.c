@@ -13,10 +13,20 @@
 #include "libs/pcapHandler.h"
 #include "libs/programConfig.h"
 #include "libs/argumentHandler.h"
+#include "libs/packetDissector.h"
 
 #include "pcap/pcap.h"
 
 void processArguments(int argc, char* argv[], Config* config);
+
+
+
+void filterPackets()
+{
+
+}
+
+
 
 int main(int argc, char* argv[])
 {
@@ -34,7 +44,7 @@ int main(int argc, char* argv[])
 
     argumentHandler(argc, argv, config);
     printConfig(config);
-    exit(0);
+
     // ------------------------------------------------------------------------
     // Setup pcap
     // ------------------------------------------------------------------------
@@ -43,8 +53,7 @@ int main(int argc, char* argv[])
     pcap_t* handle;
 
     // Setup pcap
-    errCodes_t result = pcapSetup(config, &allDevices, &handle);
-    if(result != NO_ERR) { errHandling("", result); }
+    handle = pcapSetup(config, &allDevices);
 
     // ------------------------------------------------------------------------
     // Start getting packets
@@ -55,17 +64,29 @@ int main(int argc, char* argv[])
     // The actual packet in bytes
 	const unsigned char* packet;
 
+
+    unsigned int packetCounter = 0;
     fprintf(stdout, "Capturing packets has begun.\n");
-    while(1)
+    while(packetCounter < config->numberOfPackets)
     {
         packet = pcap_next(handle, &header);
+        filterPackets();
+        // --------------------------------------------------------------------
+        printf("timestamp:");
+        printf("%ld.%06ld\n", header.ts.tv_sec, header.ts.tv_usec);
+        
+        packetDissector(packet, header.len);
 
-        printf("Yoinked a packed with length of [%d]\n", header.len);
-        printf("Yoinked packet: %s\n", packet);
+        // --------------------------------------------------------------------
 
-        if(packet){}
+        printf("\nPacket:");
+        printBytes(packet, header.len);
+        printf("\n");
+
+        packetCounter++;
     }
 
+    
     // ------------------------------------------------------------------------
     // Close and cleanup
     // ------------------------------------------------------------------------
