@@ -19,6 +19,9 @@
 // ----------------------------------------------------------------------------
 //  Structures and enums
 // ----------------------------------------------------------------------------
+typedef struct CleanUp {
+    char* timeptr; 
+} CleanUp;
 
 typedef struct ProgramConfiguration 
 {
@@ -36,6 +39,7 @@ typedef struct ProgramConfiguration
     bool igmp;
     bool mld;
     bool useFilter;
+    CleanUp cleanup;
     
 } Config;
 

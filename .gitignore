@@ -1,17 +1,15 @@
-# build/*
 build
 *.o
 
-# .vscode/*
 .vscode
 
-# docs/docbook/
-# docs/html/
-# docs/latex/
-# docs/man/
-# docs/xml/
+docs
+docs/docbook/
+docs/html/
+docs/latex/
+docs/man/
+docs/xml/
 
-# tests/*
 tests
 
 ipk-sniffer

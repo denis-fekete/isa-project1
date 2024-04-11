@@ -45,6 +45,16 @@ void setupConfig(Config* config)
         errHandling("Failed to allocate memory for config->portSrc", ERR_MALOC);
     }
 
+    config->cleanup.timeptr = (char*)malloc(RFC3339_TIME_LEN * sizeof(char));
+    if (config->cleanup.timeptr == NULL) {
+        free(config->interface);
+        free(config->port);
+        free(config->portDst);
+        free(config->portSrc);
+        errHandling("Failed to allocate memory for config->cleanUp", ERR_MALOC);
+    }
+
+
     bufferInit(config->interface);
     bufferInit(config->port);
     bufferInit(config->portDst);

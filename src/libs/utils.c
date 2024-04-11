@@ -85,7 +85,11 @@ void printBytes(const unsigned char* byteArr, size_t len, char separator)
 {
     for(size_t i = 0; i < len; i++)
     {
-        printf("%02hhx%c", (unsigned char) byteArr[i], separator);
+        printf("%02hhx", (unsigned char) byteArr[i]);
+        if(i < len - 1)
+        {
+            printf("%c", separator);
+        }
     }
 }
 
@@ -105,5 +109,11 @@ void printChars(const unsigned char* byteArr, size_t len)
             printf("%c", (unsigned char) byteArr[i]);
         else
             printf(".");
+        
+        // after 8th byte add space
+        if(i == 7)
+        {
+            printf(" ");
+        }
     }
 }

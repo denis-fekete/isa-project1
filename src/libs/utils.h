@@ -21,6 +21,8 @@
 //  Structures and enums
 // ----------------------------------------------------------------------------
 
+#define RFC3339_TIME_LEN 26 // Length of RFC3339 timestamp including '\0'
+
 typedef enum ErrorCodes
 {
     NO_ERR,
