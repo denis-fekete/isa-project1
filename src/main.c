@@ -66,7 +66,6 @@ int main(int argc, char* argv[])
 
 
     unsigned int packetCounter = 0;
-    fprintf(stdout, "Capturing packets has begun.\n");
     while(packetCounter < config->numberOfPackets)
     {
         packet = pcap_next(handle, &header);
@@ -79,22 +78,41 @@ int main(int argc, char* argv[])
 
         // --------------------------------------------------------------------
 
+        /*
+        BYTES_PER_LINE * 2 + BYTES_PER_LINE 
+        */
+
         printf("\n");
         #define BYTES_PER_LINE 16
         long long int bytesToPrint = 0;
+        short unsigned int tabs = 0;
         for(size_t i = 16; i < header.len; i += BYTES_PER_LINE)
         {
-            if(((long long int) header.len) -  i > 0)
+            // check if bytes to be printed on line is smaller number than header.len - i
+            if(BYTES_PER_LINE < ((long long unsigned ) header.len) - i)
             {
-                if(BYTES_PER_LINE < header.len - i)
-                    bytesToPrint = BYTES_PER_LINE;
-                else
-                    bytesToPrint = header.len - i; 
+                // if yes print BYTES_PER_LINE
+                bytesToPrint = BYTES_PER_LINE;
+            }   
+            // if no calculate how many bytes needs to printed and correct tabulators
+            else 
+            {
+                bytesToPrint = header.len - i; 
+                tabs = (BYTES_PER_LINE * 2 + BYTES_PER_LINE) - ( bytesToPrint * 2 + bytesToPrint);
             }
 
+            // print line number in hex
             printf("0x%04zx: ", i);
+            // print hexedecimal values
             printBytes( packet + i, bytesToPrint, ' ');
+            // separate
             printf(" ");
+            // correct tabulation if last row is not full
+            for(short unsigned int k = 0; k < tabs; k++)
+            {
+                printf(" ");
+            }
+            // print as printable characters
             printChars( packet + i, bytesToPrint);
             printf("\n");
 

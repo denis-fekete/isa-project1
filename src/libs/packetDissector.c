@@ -55,13 +55,13 @@ u_int16_t uchars2uint16(unsigned char* value)
 
 void printIPV4(u_int32_t address)
 {
-    printf("%02hu", (address >> 24) & 0xFF);
+    printf("%hu", (address >> 24) & 0xFF);
     printf(".");
-    printf("%02hu", (address >> 16) & 0xFF);
+    printf("%hu", (address >> 16) & 0xFF);
     printf(".");
-    printf("%02hu", (address >> 8) & 0xFF);
+    printf("%hu", (address >> 8) & 0xFF);
     printf(".");
-    printf("%02hu", (address >> 0) & 0xFF);
+    printf("%hu", (address >> 0) & 0xFF);
     printf("\n");
 }
 

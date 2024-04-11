@@ -52,20 +52,10 @@ typedef struct EthernetHeader
     unsigned char etherType[2];
 } EthernetHeader; 
 
-// // typedef struct ipHeader
-// // {
-
-// // } ipHeader;
-
 #define PROTOCOL_TCP 0x06
 #define PROTOCOL_UDP 0x11
 #define PROTOCOL_ICMP 0x01
 #define PROTOCOL_IGMP 0x02
-
-// typedef struct tcpHeader
-// {
-
-// } tcpHeader;
 
 // ----------------------------------------------------------------------------
 //  Functions
