@@ -1,16 +1,18 @@
-build/objects/*
-build/*
-build/
+# build/*
+build
 *.o
 
+# .vscode/*
 .vscode
 
-docs/docbook/
-docs/html/
-docs/latex/
-docs/man/
-docs/xml/
+# docs/docbook/
+# docs/html/
+# docs/latex/
+# docs/man/
+# docs/xml/
 
+# tests/*
+tests
 
 ipk-sniffer
 ./ipk-sniffer

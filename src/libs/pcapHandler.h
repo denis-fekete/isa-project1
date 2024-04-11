@@ -30,6 +30,6 @@
 //  Functions
 // ----------------------------------------------------------------------------
 
-pcap_t* pcapSetup(Config* config, pcap_if_t** allDevices);
+pcap_t* pcapSetup(Config* config, pcap_if_t** allDevices, char** errorbuf);
 
 #endif /*PCAP_HANDLER_H*/

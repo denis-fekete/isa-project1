@@ -9,7 +9,7 @@
 
 #include "pcapHandler.h"
 
-pcap_t* pcapSetup(Config* config, pcap_if_t** allDevices)
+pcap_t* pcapSetup(Config* config, pcap_if_t** allDevices, char** errorbuf)
 {
     // char errbuf[PCAP_ERRBUF_SIZE];
     char* errbuf = calloc(1, PCAP_ERRBUF_SIZE);
@@ -57,7 +57,7 @@ pcap_t* pcapSetup(Config* config, pcap_if_t** allDevices)
     }
 
     // Open live sniffing of packets
-    handle = pcap_open_live(device->name, BUFSIZ, false, 250, errbuf);
+    handle = pcap_open_live(device->name, BUFSIZ, true, 1000, errbuf);
     
     if(handle == NULL)
     {
@@ -102,5 +102,7 @@ pcap_t* pcapSetup(Config* config, pcap_if_t** allDevices)
         }
 
     }
+
+    *errorbuf = errbuf;
     return handle;
 }

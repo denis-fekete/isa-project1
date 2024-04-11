@@ -43,8 +43,10 @@ int main(int argc, char* argv[])
     // ------------------------------------------------------------------------
 
     argumentHandler(argc, argv, config);
-    printConfig(config);
-
+    #ifdef DEBUG
+        printConfig(config);
+        printf("\n");
+    #endif
     // ------------------------------------------------------------------------
     // Setup pcap
     // ------------------------------------------------------------------------
@@ -52,8 +54,9 @@ int main(int argc, char* argv[])
     pcap_if_t* allDevices;
     pcap_t* handle;
 
+    char* pcapErrbuf;
     // Setup pcap
-    handle = pcapSetup(config, &allDevices);
+    handle = pcapSetup(config, &allDevices, &pcapErrbuf);
 
     // ------------------------------------------------------------------------
     // Start getting packets
@@ -77,10 +80,6 @@ int main(int argc, char* argv[])
         frameDissector(packet, header.len);
 
         // --------------------------------------------------------------------
-
-        /*
-        BYTES_PER_LINE * 2 + BYTES_PER_LINE 
-        */
 
         printf("\n");
         #define BYTES_PER_LINE 16
@@ -115,16 +114,17 @@ int main(int argc, char* argv[])
             // print as printable characters
             printChars( packet + i, bytesToPrint);
             printf("\n");
-
         }
 
         packetCounter++;
+        printf("\n");
     }
 
     
     // ------------------------------------------------------------------------
     // Close and cleanup
     // ------------------------------------------------------------------------
+    free(pcapErrbuf);
 
     pcap_close(handle);
     pcap_freealldevs(allDevices);
