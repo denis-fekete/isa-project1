@@ -4,7 +4,15 @@
     "dictionaryDefinitions": [],
     "dictionaries": [],
     "words": [
+        "Datagram",
+        "dopt",
         "Errbuff",
+        "icmphdr",
+        "iphdr",
+        "RARP",
+        "RREPLY",
+        "RREQUEST",
+        "uchars",
         "vargp"
     ],
     "ignoreWords": [],

@@ -17,6 +17,13 @@
 #include "stdlib.h"
 #include "stdbool.h"
 
+#include "netinet/ether.h"
+#include "netinet/ip.h"
+#include "netinet/ip6.h"
+#include "netinet/tcp.h"
+#include "netinet/udp.h"
+#include "netinet/ip_icmp.h"
+
 // ----------------------------------------------------------------------------
 //  Structures and enums
 // ----------------------------------------------------------------------------
@@ -73,7 +80,7 @@ bool stringIsValidUInt(char* string);
  * @param separator character to be put between characters of byte array
  */
 void printBytes(const unsigned char* byteArr, size_t len, char separator);
-
+void printBytesNetwork(const unsigned char* byteArr, size_t len, char separator);
 /**
  * @brief Prints characters from byte array into stdout, if
  * character cannot be printed, print '.' instead.
@@ -82,6 +89,7 @@ void printBytes(const unsigned char* byteArr, size_t len, char separator);
  * @param len maximum length of the array
  */
 void printChars(const unsigned char* byteArr, size_t len);
+void printCharsNetwork(const unsigned char* byteArr, size_t len);
 
 #ifdef DEBUG
     #define debugPrint(...) \

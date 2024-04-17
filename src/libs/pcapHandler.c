@@ -127,12 +127,12 @@ Buffer createFilterExpression(Config* config)
     bufferInit(&expr);
     
     bool noPrevious = true;
-    if(config->icmp4 || config->icmp6 || config->ndp || config->mld || config->arp || config->arp)
+    if(config->icmp4 || config->icmp6 || config->ndp || config->mld || config->arp || config->arp || config->igmp)
     {
         bufferAddString(&expr, "(");
         if(config->icmp4)
         {
-            bufferAddString(&expr, "icmp4");
+            bufferAddString(&expr, "icmp");
         }
         
         // ndp and mld are subsets of ICMPv6 however pcap doesn't have build it 

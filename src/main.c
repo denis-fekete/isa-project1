@@ -75,11 +75,6 @@ char* timeval2rfc3339(struct timeval tv, Config* config)
     return rtcTime;
 }
 
-void filterPackets()
-{
-
-}
-
 void sigintHandler(int num)
 {
     if(num) {}
@@ -104,34 +99,64 @@ void sigintHandler(int num)
     free(globalConfig);
 }
 
+
 void* threadFunction(void* vargp)
 {
     Config* config = (Config*)vargp;
 
      // The header that pcap returns
-    struct pcap_pkthdr header;
+    struct pcap_pkthdr* header;
     // The actual packet in bytes
-	const unsigned char* packet;
+	// const unsigned char* packet;
 
     long long int bytesToPrint = 0;
     unsigned int packetCounter = 0;
+    const unsigned char* packetData;
     while(packetCounter < config->numberOfPackets)
     {
         // Lock mutex to prevent segmentation fault if someone tried to destroy it
         LOCK_CONFIG;
         
         short unsigned int tabs = 0;
-        packet = pcap_next(config->cleanup.handle, &header);
+        // short unsigned int tabsCorrected = 0;
+        int res =  pcap_next_ex(config->cleanup.handle, &header, &packetData);
+        if(!res ) {continue;;}
 
+        // for(size_t i = 0; i < header->len; i++)
+        // {
+        //     printf("%hhx ", (packetData[i]));
+        // }
+
+        // printf("\n\n");
+        // for(size_t i = 0; i < header->len; i++)
+        // {
+        //     printf("%hhx ", (ntohs(packetData[i]) & 0x00FF) );
+        // }
+
+        // printf("\n\n");
+        // for(size_t i = 0; i < header->len; i++)
+        // {
+        //     printf("%hhx ", (ntohs(packetData[i]) & 0xFF00) );
+        // }
+
+        // for(size_t i = 0; i < header->len; i++)
+        // {
+        //     printf("%hhx%hhx ", ntohs(packetData[i]) );
+        // }
+
+        // printf("\n\n");
+
+        // UNLOCK_AND_CHECK_CONFIG;
+        // packetCounter++;
+        // continue;
         UNLOCK_AND_CHECK_CONFIG;
         LOCK_CONFIG;
         
-        filterPackets();
         // --------------------------------------------------------------------
         printf("timestamp: ");
-        printf("%s\n", timeval2rfc3339(header.ts, config));
+        printf("%s\n", timeval2rfc3339(header->ts, config));
 
-        frameDissector(packet, header.len);
+        frameDissector(packetData, header->len);
 
         UNLOCK_AND_CHECK_CONFIG;
         LOCK_CONFIG;
@@ -139,10 +164,10 @@ void* threadFunction(void* vargp)
         printf("\n");
         #define BYTES_PER_LINE 16
 
-        for(size_t i = 16; i < header.len; i += BYTES_PER_LINE)
+        for(size_t i = 0; i < header->len; i += BYTES_PER_LINE)
         {
             // check if bytes to be printed on line is smaller number than header.len - i
-            if(BYTES_PER_LINE < ((long long unsigned ) header.len) - i)
+            if(BYTES_PER_LINE < ((long long unsigned ) header->len) - i)
             {
                 // if yes print BYTES_PER_LINE
                 bytesToPrint = BYTES_PER_LINE;
@@ -150,14 +175,14 @@ void* threadFunction(void* vargp)
             // if no calculate how many bytes needs to printed and correct tabulators
             else 
             {
-                bytesToPrint = header.len - i; 
+                bytesToPrint = header->len - i; 
                 tabs = (BYTES_PER_LINE * 2 + BYTES_PER_LINE) - ( bytesToPrint * 2 + bytesToPrint);
             }
 
             // print line number in hex
             printf("0x%04zx: ", i);
             // print hexadecimal values
-            printBytes( packet + i, bytesToPrint, ' ');
+            printBytes( packetData + i, bytesToPrint, ' ');
             // separate
             printf(" ");
             // correct tabulation if last row is not full
@@ -166,7 +191,7 @@ void* threadFunction(void* vargp)
                 printf(" ");
             }
             // print as printable characters
-            printChars( packet + i, bytesToPrint);
+            printChars( packetData + i, bytesToPrint);
             printf("\n");
         }
 

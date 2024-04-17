@@ -22,12 +22,14 @@
 #include "netinet/tcp.h"
 #include "netinet/udp.h"
 #include "netinet/ip_icmp.h"
+#include "netinet/igmp.h"
+
 
 // ----------------------------------------------------------------------------
 //  Structures and enums
 // ----------------------------------------------------------------------------
 
-// ethernet header lenght
+// ethernet header length
 #define ETHERNET_ADDR_LEN 6
 // // size of ethernet head
 #define ETH_TYPE_IPV6_LOW 0xDD
@@ -64,7 +66,7 @@ typedef struct EthernetHeader
 void frameDissector(const unsigned char* packet, size_t length);
 void printIPV4(u_int32_t address);
 u_int16_t uchars2uint16(unsigned char* value);
-void transportLayerDissector(unsigned char protocol, const unsigned char* packet);
+void ipv4ProtocolDissector(unsigned char protocol, const unsigned char* packet);
 
 unsigned char ipv4Dissector(const unsigned char* packet);
 unsigned char ipv6Dissector(const unsigned char* packet);
