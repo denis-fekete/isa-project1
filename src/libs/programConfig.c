@@ -17,24 +17,27 @@ void setupConfig(Config* config)
     config->mld = false;
     config->numberOfPackets = 1;
     config->useFilter = false;
-
+    // ------------------------------------------------------------------------
     config->interface = malloc(sizeof(Buffer));
     if(config->interface == NULL)
     {
-        errHandling("Failed to allocate memory for config->interface", ERR_MALOC);
+        free(config);
+        errHandling("Failed to allocate memory for config->interface", ERR_MALLOC);
     }
     config->port = malloc(sizeof(Buffer));
     if(config->port == NULL)
     {
         free(config->interface);
-        errHandling("Failed to allocate memory for config->port", ERR_MALOC);
+        free(config);
+        errHandling("Failed to allocate memory for config->port", ERR_MALLOC);
     }
     config->portDst = malloc(sizeof(Buffer));
     if(config->portDst == NULL)
     {
         free(config->interface);
         free(config->port);
-        errHandling("Failed to allocate memory for config->portDst", ERR_MALOC);
+        free(config);
+        errHandling("Failed to allocate memory for config->portDst", ERR_MALLOC);
     }
     config->portSrc = malloc(sizeof(Buffer));
     if(config->portSrc == NULL)
@@ -42,27 +45,101 @@ void setupConfig(Config* config)
         free(config->interface);
         free(config->port);
         free(config->portDst);
-        errHandling("Failed to allocate memory for config->portSrc", ERR_MALOC);
+        free(config);
+        errHandling("Failed to allocate memory for config->portSrc", ERR_MALLOC);
     }
-
-    config->cleanup.timeptr = (char*)malloc(RFC3339_TIME_LEN * sizeof(char));
-    if (config->cleanup.timeptr == NULL) {
-        free(config->interface);
-        free(config->port);
-        free(config->portDst);
-        free(config->portSrc);
-        errHandling("Failed to allocate memory for config->cleanUp", ERR_MALOC);
-    }
-
 
     bufferInit(config->interface);
     bufferInit(config->port);
     bufferInit(config->portDst);
     bufferInit(config->portSrc);
+    // ------------------------------------------------------------------------
+    config->cleanup.timeptr = (char*)malloc(RFC3339_TIME_LEN);
+    if (config->cleanup.timeptr == NULL) {
+        free(config->interface);
+        free(config->port);
+        free(config->portDst);
+        free(config->portSrc);
+        free(config);
+        errHandling("Failed to allocate memory for config->cleanUp", ERR_MALLOC);
+    }
+
+    config->cleanup.pcapErrbuff = (char*)malloc(PCAP_ERRBUF_SIZE);
+    if (config->cleanup.timeptr == NULL) {
+        free(config->interface);
+        free(config->port);
+        free(config->portDst);
+        free(config->portSrc);
+        free(config->cleanup.timeptr);
+        free(config);
+        errHandling("Failed to allocate memory for config->cleanUp", ERR_MALLOC);
+    }
+
+    config->cleanup.allDevices = NULL;
+    config->cleanup.handle = NULL;
+
+    config->cleanup.configMutex = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
+    if (config->cleanup.configMutex == NULL) {
+        free(config->interface);
+        free(config->port);
+        free(config->portDst);
+        free(config->portSrc);
+        free(config->cleanup.timeptr);
+        free(config->cleanup.pcapErrbuff);
+        free(config);
+        errHandling("Failed to allocate memory for config->configMutex", ERR_MALLOC);
+    }
+
+    pthread_mutex_init(config->cleanup.configMutex, NULL);
 }
 
-#define BOOL_TO_STR(boolVal) (boolVal)? "true" : "false"
+/**
+ * @brief Destroys and frees all values inside Config
+ * 
+ * @param config pointer to Config to be destroyed
+ * @param noMutex if true wont destory mutex and config
+ */
+void destroyConfig(Config* config, bool noMutex)
+{
+    bufferDestroy(config->interface);
+    bufferDestroy(config->port);
+    bufferDestroy(config->portDst);
+    bufferDestroy(config->portSrc);
 
+    free(config->interface);
+    free(config->port);
+    free(config->portDst);
+    free(config->portSrc);
+
+    config->interface = NULL;
+    config->port = NULL;
+    config->portDst = NULL;
+    config->portSrc = NULL;
+
+    free(config->cleanup.timeptr);
+    config->cleanup.timeptr = NULL;
+
+    free(config->cleanup.pcapErrbuff);
+    config->cleanup.pcapErrbuff = NULL;
+
+    // if ended before pcapSetup dont dont close it
+    if(config->cleanup.handle != NULL)
+    {
+        pcap_close(config->cleanup.handle);
+        pcap_freealldevs(config->cleanup.allDevices);
+    }
+
+    if(!noMutex)
+    {
+        pthread_mutex_destroy(config->cleanup.configMutex);
+        free(config->cleanup.configMutex);
+        free(config);
+    }
+
+}
+
+
+#define BOOL_TO_STR(boolVal) (boolVal)? "true" : "false"
 /**
  * @brief Prints currect configuration to stdout
  * 

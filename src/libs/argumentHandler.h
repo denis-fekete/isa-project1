@@ -41,11 +41,11 @@ typedef enum DisplayOptions
 
 /**
  * @brief Handles program arguements and sets correct 
- * ProgramConfigaration (Config)
+ * ProgramConfiguration (Config)
  * 
  * @param argc 
  * @param argv 
- * @param config pointer to ProgramConfigaration (Config)
+ * @param config pointer to ProgramConfiguration (Config)
  */
 void argumentHandler(int argc, char* argv[], Config* config);
 

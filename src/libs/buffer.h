@@ -16,6 +16,7 @@
 
 #include "stdlib.h"
 #include "stdio.h"
+#include "string.h"
 
 #include "utils.h"
 
@@ -89,5 +90,15 @@ void bufferPrint(Buffer* buffer, int useDebugPrint);
  * @param buffer 
  */
 void bufferDestroy(Buffer* buffer);
+
+/**
+ * @brief Adds string to the end of buffer
+ * 
+ * @warning String must be ended with "\0"
+ * 
+ * @param buffer pointer to initialized buffer 
+ * @param string string that will be added 
+ */
+void bufferAddString(Buffer* buffer, char* string);
 
 #endif

@@ -16,16 +16,30 @@
 #include "utils.h"
 #include "buffer.h"
 
+#include "pthread.h"
+
+#include "pcap/pcap.h"
+
 // ----------------------------------------------------------------------------
 //  Structures and enums
 // ----------------------------------------------------------------------------
 typedef struct CleanUp {
     char* timeptr; 
+    pcap_t* handle;
+    pcap_if_t* allDevices;
+    char* pcapErrbuff;
+    pthread_mutex_t* configMutex;
 } CleanUp;
+
 
 typedef struct ProgramConfiguration 
 {
-    Buffer* interface;
+    union
+    {
+        Buffer* interface;
+        // reuse interface as indication that program should
+        void* exitOnNull;
+    };
     Buffer* port;
     Buffer* portSrc;
     Buffer* portDst;
@@ -60,5 +74,13 @@ void setupConfig(Config* config);
  * @param config 
  */
 void printConfig(Config* config);
+
+/**
+ * @brief Destroys and frees all values inside Config
+ * 
+ * @param config pointer to Config to be destroyed
+ * @param noMutex if true wont destory mutex and config
+ */
+void destroyConfig(Config* config, bool noMutex);
 
 #endif /*PROGRAM_CONFIG_H*/

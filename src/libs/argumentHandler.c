@@ -21,6 +21,7 @@ static struct option long_options[] =
     {"interface",               required_argument,  0, 'i'},
     {"tcp",                     no_argument,        0, 't'},
     {"udp",                     no_argument,        0, 'u'},
+    {"help",                    no_argument,        0, 'h'},
     {"port-destination",        required_argument,  0, DST_PORT_OPT},
     {"port-source",             required_argument,  0, SRC_PORT_OPT},
     {"icmp4",                   no_argument,        0, dopt_ICMP4},
@@ -34,12 +35,12 @@ static struct option long_options[] =
 
 
 /**
- * @brief Handles program arguements and sets correct 
- * ProgramConfigaration (Config)
+ * @brief Handles program arguments and sets correct 
+ * ProgramConfiguration (Config)
  * 
  * @param argc 
  * @param argv 
- * @param config pointer to ProgramConfigaration (Config)
+ * @param config pointer to ProgramConfiguration (Config)
  */
 void argumentHandler(int argc, char* argv[], Config* config)
 {
@@ -102,12 +103,12 @@ void argumentHandler(int argc, char* argv[], Config* config)
                 stringReplace(config->interface->data, optarg, optLen);
                 config->interface->data[optLen] = '\0';
                 config->interface->used = optLen + 1;
-                counter--; // decrease counter because this doesnt count as no filter
+                counter--; // decrease counter because this doesn't count as no filter
                 break;
             case 'h':
                 printCliHelpMenu("ipk-sniffer");
                 errHandling("", 0);
-                counter--; // decrease counter because this doesnt count as no filter
+                counter--; // decrease counter because this doesn't count as no filter
                 break;
             case 'n':
                 // TODO: add some checking for valid numbers
@@ -115,7 +116,7 @@ void argumentHandler(int argc, char* argv[], Config* config)
                     config->numberOfPackets = atoi(optarg);
                 else
                     errHandling("TODO:", 1);
-                counter--; // decrease counter because this doesnt count as no filter
+                counter--; // decrease counter because this doesn't count as no filter
                 break;
             default:
                 errHandling("Unknown option. Use -h for help", ERR_UNKNOWN_ARG);
@@ -133,6 +134,11 @@ void argumentHandler(int argc, char* argv[], Config* config)
     if(config->interface->data == NULL)
     {
         errHandling("Interface not provided", ERR_BAD_ARGS);
+    }
+    else if(config->port->data != NULL && 
+            (config->portSrc->data != NULL || config->portDst->data != NULL))
+    {
+        errHandling("Invalid combination of arguments: use only port or use src and dst port settings, but not the combination", ERR_BAD_ARGS);
     }
 }
 

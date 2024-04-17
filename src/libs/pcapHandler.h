@@ -30,6 +30,8 @@
 //  Functions
 // ----------------------------------------------------------------------------
 
-pcap_t* pcapSetup(Config* config, pcap_if_t** allDevices, char** errorbuf);
+pcap_t* pcapSetup(Config* config, pcap_if_t** allDevices);
+
+Buffer createFilterExpression(Config* config);
 
 #endif /*PCAP_HANDLER_H*/

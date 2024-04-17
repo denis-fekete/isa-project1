@@ -7,7 +7,9 @@
  * 
  */
 
-// #include <libnet.h>
+// https://www.gnu.org/software/libc/manual/html_node/Getopt-Long-Option-Example.html
+// https://www.rfc-editor.org/rfc/rfc3339
+
 #include "libs/utils.h"
 #include "libs/buffer.h"
 #include "libs/pcapHandler.h"
@@ -15,43 +17,59 @@
 #include "libs/argumentHandler.h"
 #include "libs/packetDissector.h"
 
-
 #include "pcap/pcap.h"
 
 #include "time.h"
+#include "signal.h"
 
-void processArguments(int argc, char* argv[], Config* config);
+Config* globalConfig;
 
+
+#define LOCK_CONFIG                 \
+    pthread_mutex_lock(config->cleanup.configMutex);    \
+    if(config->exitOnNull == NULL)  \
+    {                               \
+        pthread_mutex_unlock(config->cleanup.configMutex);\
+        break;                      \
+    }                               \
+
+#define UNLOCK_AND_CHECK_CONFIG     \
+    pthread_mutex_unlock(config->cleanup.configMutex);
+    
 #define TIMEZONE_LEN sizeof("+00:00")
 
-char* timeval2rfc3339(struct timeval tv, Config* config) {
+char* timeval2rfc3339(struct timeval tv, Config* config) 
+{
     char* rtcTime = config->cleanup.timeptr;
 
     time_t time = tv.tv_sec;
+    // convert to correct UTC time format for strftime()
     struct tm *tm_info = gmtime(&time);
     if (tm_info == NULL) {
         errHandling("Failed to convert time to UTC", 9/*TODO:*/);
     }
 
+    // add year, month, hour and seconds
     if (strftime(rtcTime, RFC3339_TIME_LEN, "%Y-%m-%dT%T%z", tm_info) == 0) {
         errHandling("Failed to format time as RFC3339", 9/*TODO:*/);
     }
-    
+
+    // add miliseconds
+    sprintf(rtcTime + 19, ".%03d", (int)(tv.tv_usec / 1000));
+
+    // store times zone to other variable
     char timezone[TIMEZONE_LEN];
     if (strftime(timezone, TIMEZONE_LEN, "%z", tm_info) == 0) {
         errHandling("Failed to format timezone", 9/*TODO:*/);
     }
 
-    // from +0000 to +00:00
+    // modify timezone from +0000 to +00:00 format
     timezone[5] = timezone[4]; // move last two digits
     timezone[4] = timezone[3];
     timezone[3] = ':'; // add :
     timezone[TIMEZONE_LEN - 1] = '\0';
 
-    // add miliseconds
-    sprintf(rtcTime + 19, ".%03d", (int)(tv.tv_usec / 1000));
-
-    // add miliseconds
+    // add timezone
     sprintf(rtcTime + 23, "%s", timezone);
 
     return rtcTime;
@@ -62,43 +80,35 @@ void filterPackets()
 
 }
 
-
-
-int main(int argc, char* argv[])
+void sigintHandler(int num)
 {
-    // ------------------------------------------------------------------------
-    // Create and setup ProgramConfiguration
-    // ------------------------------------------------------------------------
-    
-    struct ProgramConfiguration programConfig;
-    Config* config = &programConfig;
-    setupConfig(config);
+    if(num) {}
+    // try to lock config, to prevent deleting data while functions are working with it
+    pthread_mutex_lock(globalConfig->cleanup.configMutex);
 
-    // ------------------------------------------------------------------------
-    // Handle program arguments
-    // ------------------------------------------------------------------------
+    // destroy config but leave mutex and config
+    destroyConfig(globalConfig, true);
+    globalConfig->exitOnNull = NULL;
 
-    argumentHandler(argc, argv, config);
-    #ifdef DEBUG
-        printConfig(config);
-        printf("\n");
-    #endif
-    // ------------------------------------------------------------------------
-    // Setup pcap
-    // ------------------------------------------------------------------------
+    // unlock for main to check that it should cease function
+    pthread_mutex_unlock(globalConfig->cleanup.configMutex);
+    // TODO: explore better option
+    sleep(1);
+    // lock again and wait for main to stop
+    pthread_mutex_lock(globalConfig->cleanup.configMutex);
+    pthread_mutex_unlock(globalConfig->cleanup.configMutex);
 
-    pcap_if_t* allDevices;
-    pcap_t* handle;
+    // destroy mutex and global config
+    pthread_mutex_destroy(globalConfig->cleanup.configMutex);
+    free(globalConfig->cleanup.configMutex);
+    free(globalConfig);
+}
 
-    char* pcapErrbuf;
-    // Setup pcap
-    handle = pcapSetup(config, &allDevices, &pcapErrbuf);
+void* threadFunction(void* vargp)
+{
+    Config* config = (Config*)vargp;
 
-    // ------------------------------------------------------------------------
-    // Start getting packets
-    // ------------------------------------------------------------------------
-
-    // The header that pcap returns
+     // The header that pcap returns
     struct pcap_pkthdr header;
     // The actual packet in bytes
 	const unsigned char* packet;
@@ -107,15 +117,24 @@ int main(int argc, char* argv[])
     unsigned int packetCounter = 0;
     while(packetCounter < config->numberOfPackets)
     {
+        // Lock mutex to prevent segmentation fault if someone tried to destroy it
+        LOCK_CONFIG;
+        
         short unsigned int tabs = 0;
-        packet = pcap_next(handle, &header);
+        packet = pcap_next(config->cleanup.handle, &header);
+
+        UNLOCK_AND_CHECK_CONFIG;
+        LOCK_CONFIG;
+        
         filterPackets();
         // --------------------------------------------------------------------
         printf("timestamp: ");
         printf("%s\n", timeval2rfc3339(header.ts, config));
 
         frameDissector(packet, header.len);
-   
+
+        UNLOCK_AND_CHECK_CONFIG;
+        LOCK_CONFIG;
         // --------------------------------------------------------------------
         printf("\n");
         #define BYTES_PER_LINE 16
@@ -137,7 +156,7 @@ int main(int argc, char* argv[])
 
             // print line number in hex
             printf("0x%04zx: ", i);
-            // print hexedecimal values
+            // print hexadecimal values
             printBytes( packet + i, bytesToPrint, ' ');
             // separate
             printf(" ");
@@ -153,16 +172,62 @@ int main(int argc, char* argv[])
 
         packetCounter++;
         printf("\n");
+
+        UNLOCK_AND_CHECK_CONFIG;
     }
 
+    return NULL;
+}
+
+
+int main(int argc, char* argv[])
+{
+    // ------------------------------------------------------------------------
+    // Create and setup ProgramConfiguration
+    // ------------------------------------------------------------------------
     
+    Config* config = (Config*) malloc(sizeof(Config));
+    if(config == NULL)
+    {
+        errHandling("Memory allocation for ProgramConfiguration failed", ERR_MALLOC);
+    }
+
+    setupConfig(config);
+    // set globalConfig to be same as local, global is for SIGINT handling
+    globalConfig = config;
+
+    signal(SIGINT, sigintHandler);
+
+    // ------------------------------------------------------------------------
+    // Handle program arguments
+    // ------------------------------------------------------------------------
+
+    argumentHandler(argc, argv, config);
+    #ifdef DEBUG
+        printConfig(config);
+        printf("\n");
+    #endif
+    // ------------------------------------------------------------------------
+    // Setup pcap
+    // ------------------------------------------------------------------------
+
+    // Setup pcap
+    config->cleanup.handle = pcapSetup(config, &(config->cleanup.allDevices));
+
+    // ------------------------------------------------------------------------
+    // Start getting packets
+    // ------------------------------------------------------------------------
+
+    pthread_t thread;
+    pthread_create(&thread, NULL, threadFunction, config);
+    pthread_join(thread, NULL);
+
     // ------------------------------------------------------------------------
     // Close and cleanup
     // ------------------------------------------------------------------------
-    free(pcapErrbuf);
-
-    pcap_close(handle);
-    pcap_freealldevs(allDevices);
-
+    // if(config != NULL)
+    // {    
+    //     destroyConfig(config, false);
+    // }   
     return 0;
 }

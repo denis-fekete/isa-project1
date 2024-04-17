@@ -48,7 +48,7 @@ void bufferResize(Buffer* buffer, size_t newSize)
     // Check for failed memory reallocation
     if(tmp == NULL)
     {
-        errHandling("Failed to reallocate memory for buffer in bufferResize()", ERR_MALOC);
+        errHandling("Failed to reallocate memory for buffer in bufferResize()", ERR_MALLOC);
     }
     // Save new value to buffer and bufferSize
     buffer->data = tmp;
@@ -97,7 +97,8 @@ void bufferPrint(Buffer* buffer, int useDebugPrint)
     for(size_t i = 0; i < buffer->used; i++)
     {
         char c = buffer->data[i];
-        if( (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9'))
+        // if( (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9'))
+        if( (c >= 0x20 && c <= 0x7e))
         {
             if(useDebugPrint) { debugPrint(stdout, "%c", c); }
             else { printf("%c", c); }
@@ -112,6 +113,42 @@ void bufferPrint(Buffer* buffer, int useDebugPrint)
     if(useDebugPrint) { debugPrint(stdout, "\n"); }
     else { printf("\n"); }
 }
+
+/**
+ * @brief Adds string to the end of buffer
+ * 
+ * @warning String must be ended with "\0"
+ * 
+ * @param buffer pointer to initialized buffer 
+ * @param string string that will be added 
+ */
+void bufferAddString(Buffer* buffer, char* string)
+{
+    int stringLen = strlen(string);
+    
+    int currentBufferLen = buffer->used;
+    // check if buffer has any data in it
+    if(buffer->data != NULL)
+    {
+        // get current length of buffer, if '\0' is last character dont count it
+        if(buffer->data[buffer->used - 1] == '\0')
+        {
+            currentBufferLen--;
+        }
+    }
+
+    // change size of buffer to new value, +1 is for '\0'
+    bufferResize(buffer, currentBufferLen + stringLen + 1);
+
+    // "old buffer string" + "new string"
+    // add input string to the end of buffer
+    stringReplace(&(buffer->data[currentBufferLen]), string, stringLen);
+
+    // add end '\0' to the buffer
+    buffer->data[currentBufferLen + stringLen] = '\0';
+    buffer->used = currentBufferLen + stringLen + 1;
+}
+
 
 /**
  * @brief Destroys Buffer and frees memory

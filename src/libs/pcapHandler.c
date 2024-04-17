@@ -9,30 +9,22 @@
 
 #include "pcapHandler.h"
 
-pcap_t* pcapSetup(Config* config, pcap_if_t** allDevices, char** errorbuf)
+pcap_t* pcapSetup(Config* config, pcap_if_t** allDevices)
 {
-    // char errbuf[PCAP_ERRBUF_SIZE];
-    char* errbuf = calloc(1, PCAP_ERRBUF_SIZE);
-    if(errbuf == NULL)
-    {
-        errHandling("Memory allocation for pcap error buffer failed\n", ERR_MALOC);
-    }
-
     pcap_t* handle;
-
     // Get list of all devices
-    int result = pcap_findalldevs( allDevices, errbuf);
+    int result = pcap_findalldevs( allDevices, config->cleanup.pcapErrbuff);
     
     // Check for errors
     if(result == PCAP_ERROR)
     {
-        fprintf(stderr, "Error buffer:  %s\n", errbuf);
-        errHandling("When looking for diveces\n", ERR_LIBPCAP);
+        fprintf(stderr, "Error buffer:  %s\n", config->cleanup.pcapErrbuff);
+        errHandling("When looking for devices\n", ERR_LIBPCAP);
     }
 
     if(allDevices == NULL)
     {
-        fprintf(stderr, "Error buffer:  %s\n", errbuf);
+        fprintf(stderr, "Error buffer:  %s\n", config->cleanup.pcapErrbuff);
         errHandling("No devices found!\n", ERR_LIBPCAP);
     }
     
@@ -57,11 +49,11 @@ pcap_t* pcapSetup(Config* config, pcap_if_t** allDevices, char** errorbuf)
     }
 
     // Open live sniffing of packets
-    handle = pcap_open_live(device->name, BUFSIZ, true, 1000, errbuf);
+    handle = pcap_open_live(device->name, BUFSIZ, true, 1000, config->cleanup.pcapErrbuff);
     
     if(handle == NULL)
     {
-        fprintf(stderr, "ERR: Couldn't open device %s: %s\n", device->name, errbuf);
+        fprintf(stderr, "ERR: Couldn't open device %s: %s\n", device->name, config->cleanup.pcapErrbuff);
         errHandling("", ERR_LIBPCAP);
     }
     
@@ -75,7 +67,7 @@ pcap_t* pcapSetup(Config* config, pcap_if_t** allDevices, char** errorbuf)
     // Get IPv4 of device and its mask
     bpf_u_int32 mask; // The netmask of our sniffing device
     bpf_u_int32 net; // IP address of sniffing device
-    if(pcap_lookupnet(device->name, &net, &mask, errbuf))
+    if(pcap_lookupnet(device->name, &net, &mask, config->cleanup.pcapErrbuff))
     {
         net = 0;
         mask = 0;
@@ -85,8 +77,17 @@ pcap_t* pcapSetup(Config* config, pcap_if_t** allDevices, char** errorbuf)
 
     if(config->useFilter)
     {
+
+
         // Creating a filter to only look for certain traffic
-        const char filter_exp[] = ""; // Filter expression
+
+        // Filter expression
+        Buffer expr = createFilterExpression(config);
+        debugPrint(stdout, "Final expression of filter:\n"); // DEBUG:
+        bufferPrint(&expr, 1); // DEBUG:
+
+        char* filter_exp = expr.data;
+        // filter_exp = "";  // debug
         struct bpf_program fp; // Stuct that holds compiled filter expression
         if(pcap_compile(handle, &fp, filter_exp, 0, net) == PCAP_ERROR)
         {
@@ -101,8 +102,128 @@ pcap_t* pcapSetup(Config* config, pcap_if_t** allDevices, char** errorbuf)
             errHandling("", ERR_LIBPCAP);
         }
 
+        bufferDestroy(&expr);
     }
 
-    *errorbuf = errbuf;
     return handle;
+}
+
+// add or to filter expression if needed
+#define ADD_OR                                                                 \
+    if(expr.data != NULL && expr.data[expr.used -2] != '(')                    \
+    {                                                                          \
+        bufferAddString(&expr, " or ");                                        \
+    }                                   
+
+/**
+ * @brief Creates Buffer and fills it with PCAP filters
+ * 
+ * @param config 
+ * @return Buffer 
+ */
+Buffer createFilterExpression(Config* config)
+{
+    Buffer expr;
+    bufferInit(&expr);
+    
+    bool noPrevious = true;
+    if(config->icmp4 || config->icmp6 || config->ndp || config->mld || config->arp || config->arp)
+    {
+        bufferAddString(&expr, "(");
+        if(config->icmp4)
+        {
+            bufferAddString(&expr, "icmp4");
+        }
+        
+        // ndp and mld are subsets of ICMPv6 however pcap doesn't have build it 
+        // function to filter them out, so filtering will be done in later steps
+        if(config->icmp6 || config->ndp || config->mld)
+        {
+            ADD_OR;
+            bufferAddString(&expr, "icmp6");
+        }
+
+        if(config->arp )
+        {
+            ADD_OR;
+            bufferAddString(&expr, "arp");
+        }
+
+        if(config->igmp)
+        {
+            ADD_OR;
+            bufferAddString(&expr, "igmp");
+        }
+        bufferAddString(&expr, ")");
+
+        noPrevious = false;
+    }
+
+    if( config->port->data != NULL || 
+        config->portDst->data != NULL || 
+        config->portSrc->data != NULL)
+    {
+        if(!noPrevious)
+        {
+            bufferAddString(&expr, " and (");
+        }
+
+        if(config->port->data != NULL)
+        {
+            bufferAddString(&expr, "port ");
+            bufferAddString(&expr, config->port->data);
+        }
+        
+        if (config->portDst->data != NULL)
+        {
+            bufferAddString(&expr, "dst port ");
+            bufferAddString(&expr, config->portDst->data);
+            
+        }
+        if (config->portSrc->data != NULL)
+        {
+            if(config->portDst->data != NULL)
+            {
+                bufferAddString(&expr, " ");
+            }
+
+            bufferAddString(&expr, "src port ");
+            bufferAddString(&expr, config->portSrc->data);
+        }
+
+        if(!noPrevious)
+        {
+            bufferAddString(&expr, ")");
+        }
+    }
+
+    if(config->tcp || config->udp)
+    {
+        if(!noPrevious)
+        {
+            bufferAddString(&expr, " and (");
+        }
+
+        if(config->tcp)
+        {
+            bufferAddString(&expr, "tcp");
+        }
+        
+        if(config->udp)
+        {
+            if(config->tcp)
+            {
+                bufferAddString(&expr, " or ");
+            }
+
+            bufferAddString(&expr, "udp");
+        }
+
+        if(!noPrevious)
+        {
+            bufferAddString(&expr, ")");
+        }
+    }
+
+    return expr;
 }
