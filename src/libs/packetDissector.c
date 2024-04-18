@@ -9,19 +9,24 @@
 
 #include "packetDissector.h"
 
+// ----------------------------------------------------------------------------
+// Ethernet frame
+// ----------------------------------------------------------------------------
 
-void frameDissector(const unsigned char* packet, size_t length)
+FrameSections frameDissector(const unsigned char* packet, size_t length)
 {     
     EthernetHeader* eth;
+    FrameSections frameS;
 
     eth = (EthernetHeader *) packet;
-    printf("src MAC: ");
+    printf("Frame: \n");
+    printf("\tsrc MAC: ");
     printBytes(eth->dst, ETHERNET_ADDR_LEN, ':');
     printf("\n");
-    printf("dst MAC: ");
+    printf("\tdst MAC: ");
     printBytes(eth->src, ETHERNET_ADDR_LEN, ':');
     printf("\n");
-    printf("frame length: %li bytes\n", length);
+    printf("\tframe length: %li bytes\n", length);
 
     unsigned char protocol;
     switch( uchars2uint16(&(eth->etherType[0])) )
@@ -29,13 +34,30 @@ void frameDissector(const unsigned char* packet, size_t length)
         case ETH_TYPE_IPV4:
             protocol = ipv4Dissector(packet + sizeof(EthernetHeader));
 
-            ipv4ProtocolDissector(protocol, packet + sizeof(EthernetHeader) + sizeof(struct iphdr));
+            ipv4ProtocolDissector(protocol, 
+                    packet + sizeof(EthernetHeader) + sizeof(struct iphdr), 
+                    length - sizeof(EthernetHeader) - sizeof(struct iphdr)
+                    );
+            
+            frameS.etherLen = sizeof(EthernetHeader);
+            frameS.ipLen = sizeof(struct iphdr);
             break;
         case ETH_TYPE_IPV6:
-            ipv6Dissector(packet + sizeof(EthernetHeader));
+            protocol = ipv6Dissector(packet + sizeof(EthernetHeader));
+            ipv6ProtocolDissector(protocol, 
+                    packet + sizeof(EthernetHeader) + sizeof(struct ip6_hdr), 
+                    length - sizeof(EthernetHeader) - sizeof(struct ip6_hdr)
+                    );
+
+            frameS.etherLen = sizeof(EthernetHeader);
+            frameS.ipLen = sizeof(struct iphdr);
+            frameS.ipProtocolLen = length - frameS.etherLen - frameS.ipLen;
             break;
         case ETH_TYPE_ARP:
             arpDissector(packet + sizeof(EthernetHeader));
+            frameS.etherLen = sizeof(EthernetHeader);
+            frameS.ipLen = sizeof(struct arphdr);
+            frameS.ipProtocolLen = length - frameS.etherLen - frameS.ipLen;
             break;
         default:
             printf("EtherType: (%hhx %hhx)\n", eth->etherType[0], eth->etherType[1]);
@@ -44,56 +66,77 @@ void frameDissector(const unsigned char* packet, size_t length)
     }
 
     if(length) {}
+    return frameS;
 }
 
+/**
+ * @brief Dissects IPv4 protocol 
+ * 
+ * @param packet Pointer to the packet, must start at Internet Protocol
+ * @return unsigned char Pointer where IP protocol ends, and protocol stars
+ */
 u_int16_t uchars2uint16(unsigned char* value)
 {
     //                  LOW         HIGH
     return (u_int16_t) (value[1] +  (value[0] << 8)); 
 }
 
+// ----------------------------------------------------------------------------
+// Internet Protocol version 4
+// ----------------------------------------------------------------------------
 
-void printIPV4(u_int32_t address)
+unsigned char ipv4Dissector(const unsigned char* packet)
 {
-    printf("%hu", (address >> 24) & 0xFF);
-    printf(".");
-    printf("%hu", (address >> 16) & 0xFF);
-    printf(".");
-    printf("%hu", (address >> 8) & 0xFF);
-    printf(".");
-    printf("%hu", (address >> 0) & 0xFF);
-    printf("\n");
+    struct iphdr* ipv4 = (struct iphdr*) packet;
+    printf("IPv4 Packet:\n");
+
+    printf("\tsrc IP: ");
+    printIPv4(ipv4->saddr);
+
+    printf("\tdst IP: ");
+    printIPv4(ipv4->daddr);
+
+    return ipv4->protocol;
 }
 
-void ipv4ProtocolDissector(unsigned char protocol, const unsigned char* packet)
+/**
+ * @brief Dissector of IPv4 protocol
+ * 
+ * @param protocol Protocol to be dissected
+ * @param packet Pointer to the packet
+ * @param length Maximum length that you can read
+ */
+void ipv4ProtocolDissector(unsigned char protocol, const unsigned char* packet, size_t length)
 {
+    if(length){}
+    printf("\tProtocol: ");
     switch (protocol)
     {
-    case PROTOCOL_UDP:;
-        printf("protocol: udp\n");
+    case IPv4_PROTOCOL_UDP:;
+        printf("udp\n");
         struct udphdr* udp = (struct udphdr*) packet;
-        printf("src port: %u\n", ntohs(udp->uh_sport)); 
-        printf("dst port: %u\n", ntohs(udp->uh_dport)); 
+        printf("\t\tsrc port: %u\n", ntohs(udp->uh_sport)); 
+        printf("\t\tdst port: %u\n", ntohs(udp->uh_dport)); 
         break;
-    case PROTOCOL_TCP:;
-        printf("protocol: tcp\n");
+    case IPv4_PROTOCOL_TCP:;
+        printf("tcp\n");
         struct tcphdr* tcp = (struct tcphdr*) packet;
-        printf("src port: %u\n", ntohs(tcp->th_sport)); 
-        printf("dst port: %u\n", ntohs(tcp->th_dport)); 
+        printf("\t\tsrc port: %u\n", ntohs(tcp->th_sport)); 
+        printf("\t\tdst port: %u\n", ntohs(tcp->th_dport)); 
         break;
-    case PROTOCOL_ICMP:;
-        printf("protocol: icmp\n");
+    case IPv4_PROTOCOL_ICMP:;
+        printf("icmp\n");
         struct icmphdr* icmp = (struct icmphdr*) packet;
-        printf("type: %u (0x%hhx)\n", icmp->type, icmp->type);
-        printf("code: %u (0x%hhx)\n", icmp->code, icmp->code);
+        printf("\t\ttype: %u (0x%hhx)\n", icmp->type, icmp->type);
+        printf("\t\tcode: %u (0x%hhx)\n", icmp->code, icmp->code);
         break;
-    case PROTOCOL_IGMP:;
-        printf("protocol: igmp\n");
+    case IPv4_PROTOCOL_IGMP:;
+        printf("igmp\n");
         struct igmp* igmp = (struct igmp*) packet;
-        printf("type: %u (0x%hhx)\n", igmp->igmp_type, igmp->igmp_type);
-        printf("code: %u (0x%hhx)\n", igmp->igmp_code, igmp->igmp_code);
-        printf("group address: ");
-        printIPV4( ntohl(igmp->igmp_group.s_addr) );
+        printf("\t\ttype: %u (0x%hhx)\n", igmp->igmp_type, igmp->igmp_type);
+        printf("\t\tcode: %u (0x%hhx)\n", igmp->igmp_code, igmp->igmp_code);
+        printf("\t\tgroup address:\t");
+        printIPv4(igmp->igmp_group.s_addr);
         break;
     
     default:
@@ -102,25 +145,158 @@ void ipv4ProtocolDissector(unsigned char protocol, const unsigned char* packet)
     }
 }
 
-unsigned char ipv4Dissector(const unsigned char* packet)
+/**
+ * @brief Prints IPv4 address in correct endian
+ * 
+ * @param address IPv4 address
+ */
+void printIPv4(u_int32_t address)
 {
-    struct iphdr* ipv4 = (struct iphdr*) packet;
+    u_int32_t addressCorrected = ntohl(address);
 
-    printf("src IP: ");
-    // print ipv4 address by bytes, need to convert it into system endian
-    printIPV4(ntohl(ipv4->saddr));
-    printf("dst IP: ");
-    // print ipv4 address by bytes, need to convert it into system endian
-    printIPV4(ntohl(ipv4->daddr));
+    for(short i = 24 ; i >= 0 ; i -= 8)
+    {
+        printf("%hu", (addressCorrected >> i) & 0xFF);
+            
+        if(i != 0)
+        {
+            printf(".");
+        }
+    }
 
-    return ipv4->protocol;
+    printf("\n");
 }
 
+// ----------------------------------------------------------------------------
+// Internet Protocol version 6
+// ----------------------------------------------------------------------------
+
+/**
+ * @brief Dissects IPv6 protocol 
+ * 
+ * @param packet Pointer to the packet, must start at Internet Protocol
+ * @return unsigned char Pointer where IP protocol ends, and protocol stars
+ */
 unsigned char ipv6Dissector(const unsigned char* packet)
 {
-    if(packet ) {}
-    return 0;
+    struct ip6_hdr* ipv6 = (struct ip6_hdr*) packet;
+    printf("IPv6 Packet:\n");
+
+    printf("\tsrc IP: ");
+    printIPv6(ipv6->ip6_src.__in6_u.__u6_addr32);
+
+    printf("\tdst IP: ");
+    printIPv6(ipv6->ip6_dst.__in6_u.__u6_addr32);
+
+    
+    return (unsigned char) packet[sizeof(struct ip6_hdr)];
 }
+
+/**
+ * @brief Dissector of IPv6 protocol
+ * 
+ * @param protocol Protocol to be dissected
+ * @param packet Pointer to the packet
+ * @param length Maximum length that you can read
+ */
+void ipv6ProtocolDissector(unsigned char protocol, const unsigned char* packet, size_t length)
+{
+    struct icmp6_hdr* icmp6 = (struct icmp6_hdr*) packet;
+
+    printf("\tProtocol: ");
+    if(protocol == IPv6_ICMP_REQUEST || protocol == IPv6_ICMP_REPLY)
+    {
+        printf("Internet Control Message Protocol version 6 (ICMPv6)\n");
+    }
+    else if(protocol == IPv6_MLD_QUERY || protocol == IPv6_MLD_REPORT || protocol == IPv6_MLD_DONE)
+    {
+        printf("Multicast Listener Discovery (MLD)\n");
+    }
+    else if(protocol == IPv6_NDP_ROUTER_SOLICITATION || 
+            protocol == IPv6_NDP_ROUTER_ADVERTISEMENT || 
+            protocol == IPv6_NDP_NEIGHBOR_SOLICITATION ||
+            protocol == IPv6_NDP_NEIGHBOR_ADVERTISEMENT ||
+            protocol == IPv6_NDP_REDIRECT_MESSAGE)
+    {
+        printf("Neighbor Discovery Protocol (NDP)\n");
+    }
+
+    printf("\t\ttype: %u (0x%hhx) ", icmp6->icmp6_type, icmp6->icmp6_type);
+    switch(protocol)
+    {
+        case IPv6_ICMP_REQUEST :;
+            printf("(Echo Request)\n");
+            break;
+        case IPv6_ICMP_REPLY :;
+            printf("(Echo Reply)\n");
+            break;
+        // --------------------------------------------------------------------
+        case IPv6_MLD_QUERY :;
+            printf("(Multicast Listener Query)\n");
+            break;
+        case IPv6_MLD_REPORT :;
+            printf("(Multicast Listener Report)\n");
+            break;
+        case IPv6_MLD_DONE :;
+            printf("(Multicast Listener Done)\n");
+            break;
+        // --------------------------------------------------------------------
+        case IPv6_NDP_ROUTER_SOLICITATION :;
+            printf("(Router Solicitation)\n");
+            break;
+        case IPv6_NDP_ROUTER_ADVERTISEMENT :;
+            printf("(Router Advertisement)\n");
+            break;
+        case IPv6_NDP_NEIGHBOR_SOLICITATION :;
+            printf("(Neighbor Solicitation)\n");
+            break;
+        case IPv6_NDP_NEIGHBOR_ADVERTISEMENT :;
+            printf("(Neighbor Advertisement)\n");
+            break;
+        // --------------------------------------------------------------------
+        case IPv6_NDP_REDIRECT_MESSAGE :;
+            printf("(Redirect Message)\n");
+            break;
+        // --------------------------------------------------------------------
+        default:         
+            debugPrint(stdout, "\nDEBUG: Unknown protocol: %u\n", protocol);
+            errHandling("\nUnknown transport layer protocol", 9/*TODO:*/);
+            break;
+    }
+    printf("\t\tcode: %u (0x%hhx)\n", icmp6->icmp6_code, icmp6->icmp6_type);
+
+    if(length){}
+}
+
+/**
+ * @brief Prints IPv6 address in correct system endian
+ * 
+ * @param address pointer to u_int32_t[4]   
+ */
+void printIPv6(u_int32_t* address)
+{
+    u_int32_t addressCorrected[4];
+    addressCorrected[0] = ntohl(address[0]);
+    addressCorrected[1] = ntohl(address[1]);
+    addressCorrected[2] = ntohl(address[2]);
+    addressCorrected[3] = ntohl(address[3]);
+
+    for(short i = 128 ; i >= 0 ; i -= 8)
+    {
+        printf("%hu", ((*addressCorrected) >> i) & 0xFF);
+        
+        if(i != 0)
+        {
+            printf(":");
+        }
+    }
+
+    printf("\n");
+}
+
+// ----------------------------------------------------------------------------
+// Address Resolution Protocol
+// ----------------------------------------------------------------------------
 
 unsigned char arpDissector(const unsigned char* packet)
 {
@@ -129,24 +305,31 @@ unsigned char arpDissector(const unsigned char* packet)
     {
         case ARPOP_REQUEST  :		/* ARP request.  */
             printf("opcode: arp request\n");
+            // TODO:
             break;
         case ARPOP_REPLY    :		/* ARP reply.  */
             printf("opcode: arp reply\n");
+            // TODO:
             break;
         case ARPOP_RREQUEST :		/* RARP request.  */
             printf("opcode: rarp request\n");
+            // TODO:
             break;
         case ARPOP_RREPLY   :		/* RARP reply.  */
             printf("opcode: rarp reply\n");
+            // TODO:
             break;
         case ARPOP_InREQUEST:		/* InARP request.  */
             printf("opcode: inarp request\n");
+            // TODO:
             break;
         case ARPOP_InREPLY  :		/* InARP reply.  */
             printf("opcode: inarp reply\n");
+            // TODO:
             break;
         case ARPOP_NAK      :		/* (ATM)ARP NAK.  */
             printf("opcode: (atm) arp nak\n");
+            // TODO:
             break;
     default:
         break;
@@ -154,35 +337,3 @@ unsigned char arpDissector(const unsigned char* packet)
 
     return 0;
 }
-
-
-// void icmpPrint()
-// {
-    // switch(icmp->type)
-    // {
-    //     case 3:
-    //         switch(icmp->code)
-    //         {
-    //             case 0: printf("net unreachable"); break;
-    //             case 1: printf("host unreachable"); break;
-    //             case 2: printf("protocol unreachable"); break;
-    //             case 3: printf("port unreachable"); break;
-    //             case 4: printf("fragmentation needed by DF set"); break;
-    //             case 5: printf("source route failed"); break;
-    //         }
-    //         break;
-    //     case 11:
-    //         switch(icmp->code)
-    //         {
-    //             case 0: printf("time to live exceeded in transit"); break;
-    //             case 1: printf("fragment reassembly time exceeded"); break;
-    //         }
-    //         break;
-    //     case 12:;
-    //         // error detected, print error message contained in protocol
-    //         const unsigned char* pointer_pos = &packet[31];
-    //         const unsigned char pointer = ntohs(((unsigned char)*pointer_pos));
-    //         printf("%s", &(originalPacket[packet[pointer]]));
-    //         break;
-    // }
-// }

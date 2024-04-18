@@ -99,6 +99,103 @@ void sigintHandler(int num)
     free(globalConfig);
 }
 
+#define BYTES_PER_LINE 16
+void printHexDump(size_t maxLen, const unsigned char* packetData)
+{
+    long long int bytesToPrint = 0;
+    short unsigned int tabs = 0;
+    for(size_t i = 0; i < maxLen; i += BYTES_PER_LINE)
+    {
+        // check if bytes to be printed on line is smaller number than header.len - i
+        if(BYTES_PER_LINE < ((long long unsigned ) maxLen) - i)
+        {
+            // if yes print BYTES_PER_LINE
+            bytesToPrint = BYTES_PER_LINE;
+        }   
+        // if no calculate how many bytes needs to printed and correct tabulators
+        else 
+        {
+            bytesToPrint = maxLen - i; 
+            tabs = (BYTES_PER_LINE * 2 + BYTES_PER_LINE) - ( bytesToPrint * 2 + bytesToPrint);
+        }
+
+        // print line number in hex
+        printf("0x%04zx: ", i);
+        // print hexadecimal values
+        printBytes( packetData + i, bytesToPrint, ' ');
+        // separate
+        printf(" ");
+        // correct tabulation if last row is not full
+        for(short unsigned int k = 0; k < tabs; k++)
+        {
+            printf(" ");
+        }
+        // print as printable characters
+        printChars( packetData + i, bytesToPrint);
+        printf("\n");
+    }
+}
+
+void printBetterHexDump(size_t maxLen, const unsigned char* packetData, FrameSections frameSelections)
+{
+    size_t bytesToPrint = 0;
+    short unsigned int tabs = 0;
+
+    printf("Ethernet:\n");
+    for(size_t i = 0; i < frameSelections.etherLen; i += BYTES_PER_LINE)
+    {
+        // check if bytes to be printed on line is smaller number than header.len - i
+        if(BYTES_PER_LINE < ((long long unsigned ) maxLen) - i)
+        {
+            // if yes print BYTES_PER_LINE
+            bytesToPrint = BYTES_PER_LINE;
+        }   
+        // if no calculate how many bytes needs to printed and correct tabulators
+        else 
+        {
+            bytesToPrint = maxLen - i; 
+            tabs = (BYTES_PER_LINE * 2 + BYTES_PER_LINE) - ( bytesToPrint * 2 + bytesToPrint);
+        }
+
+        // print line number in hex
+        printf("0x%04zx: ", i);
+        // print hexadecimal values
+
+        if(i == frameSelections.etherLen)
+            printf("Internet Protocol:\n");
+        else if(i == frameSelections.ipLen)
+            printf("Protocol:\n");
+
+        for(size_t k = 0; k < bytesToPrint; k++)
+        {
+            if(i + k == frameSelections.etherLen)
+            {
+                printf("\nInternet Protocol:\n");
+            }
+            else if(i + k == frameSelections.ipLen)
+            {
+                printf("\nProtocol:\n");
+            }
+
+            printf("%02hhx", (unsigned char) (packetData + i)[k]);
+            if(k < bytesToPrint - 1)
+            {
+                printf("%c", ' ');
+            }
+        }
+
+        // separate
+        printf(" ");
+        // correct tabulation if last row is not full
+        for(short unsigned int k = 0; k < tabs; k++)
+        {
+            printf(" ");
+        }
+        // print as printable characters
+        printChars( packetData + i, bytesToPrint);
+        printf("\n");
+    }
+}
 
 void* threadFunction(void* vargp)
 {
@@ -109,91 +206,37 @@ void* threadFunction(void* vargp)
     // The actual packet in bytes
 	// const unsigned char* packet;
 
-    long long int bytesToPrint = 0;
+    const bool betterHexDump = true;
+
     unsigned int packetCounter = 0;
     const unsigned char* packetData;
     while(packetCounter < config->numberOfPackets)
     {
         // Lock mutex to prevent segmentation fault if someone tried to destroy it
         LOCK_CONFIG;
-        
-        short unsigned int tabs = 0;
+
         // short unsigned int tabsCorrected = 0;
         int res =  pcap_next_ex(config->cleanup.handle, &header, &packetData);
-        if(!res ) {continue;;}
+        if(!res ) {continue;}
 
-        // for(size_t i = 0; i < header->len; i++)
-        // {
-        //     printf("%hhx ", (packetData[i]));
-        // }
-
-        // printf("\n\n");
-        // for(size_t i = 0; i < header->len; i++)
-        // {
-        //     printf("%hhx ", (ntohs(packetData[i]) & 0x00FF) );
-        // }
-
-        // printf("\n\n");
-        // for(size_t i = 0; i < header->len; i++)
-        // {
-        //     printf("%hhx ", (ntohs(packetData[i]) & 0xFF00) );
-        // }
-
-        // for(size_t i = 0; i < header->len; i++)
-        // {
-        //     printf("%hhx%hhx ", ntohs(packetData[i]) );
-        // }
-
-        // printf("\n\n");
-
-        // UNLOCK_AND_CHECK_CONFIG;
-        // packetCounter++;
-        // continue;
         UNLOCK_AND_CHECK_CONFIG;
         LOCK_CONFIG;
         
         // --------------------------------------------------------------------
-        printf("timestamp: ");
-        printf("%s\n", timeval2rfc3339(header->ts, config));
+        printf("Number: %u\n", packetCounter);
+        printf("\ttimestamp: %s\n", timeval2rfc3339(header->ts, config));
 
-        frameDissector(packetData, header->len);
+        FrameSections frameSelection =  frameDissector(packetData, header->len);
 
         UNLOCK_AND_CHECK_CONFIG;
         LOCK_CONFIG;
         // --------------------------------------------------------------------
         printf("\n");
-        #define BYTES_PER_LINE 16
 
-        for(size_t i = 0; i < header->len; i += BYTES_PER_LINE)
-        {
-            // check if bytes to be printed on line is smaller number than header.len - i
-            if(BYTES_PER_LINE < ((long long unsigned ) header->len) - i)
-            {
-                // if yes print BYTES_PER_LINE
-                bytesToPrint = BYTES_PER_LINE;
-            }   
-            // if no calculate how many bytes needs to printed and correct tabulators
-            else 
-            {
-                bytesToPrint = header->len - i; 
-                tabs = (BYTES_PER_LINE * 2 + BYTES_PER_LINE) - ( bytesToPrint * 2 + bytesToPrint);
-            }
-
-            // print line number in hex
-            printf("0x%04zx: ", i);
-            // print hexadecimal values
-            printBytes( packetData + i, bytesToPrint, ' ');
-            // separate
-            printf(" ");
-            // correct tabulation if last row is not full
-            for(short unsigned int k = 0; k < tabs; k++)
-            {
-                printf(" ");
-            }
-            // print as printable characters
-            printChars( packetData + i, bytesToPrint);
-            printf("\n");
-        }
+        if(betterHexDump)
+            printBetterHexDump(header->len, packetData, frameSelection);
+        else
+            printHexDump(header->len, packetData);
 
         packetCounter++;
         printf("\n");
@@ -228,10 +271,11 @@ int main(int argc, char* argv[])
     // ------------------------------------------------------------------------
 
     argumentHandler(argc, argv, config);
-    #ifdef DEBUG
-        printConfig(config);
-        printf("\n");
-    #endif
+    // #ifdef DEBUG
+    //     printConfig(config);
+    //     printf("\n");
+    // #endif
+
     // ------------------------------------------------------------------------
     // Setup pcap
     // ------------------------------------------------------------------------
@@ -250,9 +294,10 @@ int main(int argc, char* argv[])
     // ------------------------------------------------------------------------
     // Close and cleanup
     // ------------------------------------------------------------------------
-    // if(config != NULL)
-    // {    
-    //     destroyConfig(config, false);
-    // }   
+
+    if(config != NULL)
+    {    
+        destroyConfig(config, false);
+    }   
     return 0;
 }

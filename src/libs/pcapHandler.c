@@ -83,8 +83,8 @@ pcap_t* pcapSetup(Config* config, pcap_if_t** allDevices)
 
         // Filter expression
         Buffer expr = createFilterExpression(config);
-        debugPrint(stdout, "Final expression of filter:\n"); // DEBUG:
-        bufferPrint(&expr, 1); // DEBUG:
+        debugPrint(stdout, "DEBUG: Final expression of filter: ");
+        bufferPrint(&expr, 1);
 
         char* filter_exp = expr.data;
         // filter_exp = "";  // debug
