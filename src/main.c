@@ -36,21 +36,24 @@ Config* globalConfig;
 #define UNLOCK_AND_CHECK_CONFIG     \
     pthread_mutex_unlock(config->cleanup.configMutex);
     
+
 #define TIMEZONE_LEN sizeof("+00:00")
 
-char* timeval2rfc3339(struct timeval tv, Config* config) 
+char* timeval2rfc3339(struct timeval tv, Config* config)
 {
     char* rtcTime = config->cleanup.timeptr;
 
     time_t time = tv.tv_sec;
     // convert to correct UTC time format for strftime()
     struct tm *tm_info = gmtime(&time);
-    if (tm_info == NULL) {
+    if (tm_info == NULL)
+    {
         errHandling("Failed to convert time to UTC", 9/*TODO:*/);
     }
 
     // add year, month, hour and seconds
-    if (strftime(rtcTime, RFC3339_TIME_LEN, "%Y-%m-%dT%T%z", tm_info) == 0) {
+    if (strftime(rtcTime, RFC3339_TIME_LEN, "%Y-%m-%dT%T%z", tm_info) == 0)
+     {
         errHandling("Failed to format time as RFC3339", 9/*TODO:*/);
     }
 
@@ -59,7 +62,8 @@ char* timeval2rfc3339(struct timeval tv, Config* config)
 
     // store times zone to other variable
     char timezone[TIMEZONE_LEN];
-    if (strftime(timezone, TIMEZONE_LEN, "%z", tm_info) == 0) {
+    if (strftime(timezone, TIMEZONE_LEN, "%z", tm_info) == 0)
+    {
         errHandling("Failed to format timezone", 9/*TODO:*/);
     }
 
@@ -74,6 +78,8 @@ char* timeval2rfc3339(struct timeval tv, Config* config)
 
     return rtcTime;
 }
+
+#undef TIMEZONE_LEN
 
 void sigintHandler(int num)
 {
@@ -100,6 +106,8 @@ void sigintHandler(int num)
 }
 
 #define BYTES_PER_LINE 16
+
+
 void printHexDump(size_t maxLen, const unsigned char* packetData)
 {
     long long int bytesToPrint = 0;
@@ -120,7 +128,7 @@ void printHexDump(size_t maxLen, const unsigned char* packetData)
         }
 
         // print line number in hex
-        printf("0x%04zx: ", i);
+        printf("\t0x%04zx: ", i);
         // print hexadecimal values
         printBytes( packetData + i, bytesToPrint, ' ');
         // separate
@@ -135,144 +143,107 @@ void printHexDump(size_t maxLen, const unsigned char* packetData)
         printf("\n");
     }
 }
+#undef BYTES_PER_LINE
 
-void printSpaces(size_t numOfSpaces)
+
+void printCharsAtEnd(size_t* actualVPos, size_t bytesPrinted, size_t vPos, size_t skipped, const unsigned char* packetData)
 {
-    for(size_t i = 0; i < numOfSpaces; i++)
+    const unsigned short VPOS_B_SIZE = sizeof("ff ") - 1;
+    const unsigned short BYTES_PER_LINE = 16;
+    const unsigned short CHAR_VPOS = BYTES_PER_LINE * VPOS_B_SIZE;
+    const unsigned short CHAR_INDENT_VPOS = CHAR_VPOS + 7;
+
+    // fix indentation
+    for(; *actualVPos < CHAR_VPOS + skipped; (*actualVPos)++) { printf(" "); }
+    
+    const unsigned char* byte = packetData + bytesPrinted - vPos / VPOS_B_SIZE + skipped;
+    // print bytes in as characters if printable
+    for(size_t i = 0; i < vPos / VPOS_B_SIZE - skipped; i++)
     {
-        printf(" ");
+        if(byte[i] >= 0x20 && byte[i] <= 0x7e)
+            printf("%c", (unsigned char) byte[i]);
+        else
+            printf(".");
+        // add one extra in the middle
+        if(*actualVPos == CHAR_INDENT_VPOS)
+            printf(" ");
+
+        (*actualVPos)++;
     }
+    printf("\n");
 }
+
 
 void printBetterHexDump(size_t maxLen, const unsigned char* packetData, FrameSections frameS)
 {
-    // printf("Ethernet:\n");
-    // printBytes(packetData, frameS.etherLen, ' ');
-    // printf("\nInternet Protocol:\n");
-    // printBytes(packetData + frameS.etherLen, frameS.ipLen, ' ');
-    // printf("\nProtocol:\n");
-    // printBytes(packetData + frameS.etherLen + frameS.ipLen, frameS.ipProtocolLen, ' ');
-    // printf("\n");
+    size_t bytesPrinted = 0; 
+    size_t vPos = 0;
+    size_t actualVPos = 0;
+    size_t hPos = 0;
+    size_t skipped = 0; 
 
-    bool ipNotPrinted = true;
-    bool ipProtocolNotPrinted = true;
+    const unsigned short VPOS_B_SIZE = sizeof("ff ") - 1;
+    const unsigned short BYTES_PER_LINE = 16;
 
-
-    long long int bytesToPrint = 0;
-    short unsigned int tabs = 0;
-    printf("Data layer:\n");
-    printf("\t0x0000: ");
-    for(size_t i = 0; i < maxLen; i += BYTES_PER_LINE)
+    for(; bytesPrinted < maxLen; bytesPrinted++)
     {
-        // check if bytes to be printed on line is smaller number than header.len - i
-        if(BYTES_PER_LINE < ((long long unsigned ) maxLen) - i)
+        unsigned char byte = *(packetData + bytesPrinted);
+
+        if(bytesPrinted == 0)
         {
-            // if yes print BYTES_PER_LINE
-            bytesToPrint = BYTES_PER_LINE;
-        }   
-        // if no calculate how many bytes needs to printed and correct tabulators
-        else 
-        {
-            bytesToPrint = maxLen - i; 
-            tabs = (BYTES_PER_LINE * 2 + BYTES_PER_LINE) - ( bytesToPrint * 2 + bytesToPrint);
-        }
-
-        // print line number in hex
-        // print hexadecimal values
-        if(ipNotPrinted && i + bytesToPrint > frameS.etherLen)
-        {
-            // print parts of last segment
-            size_t corrected = i + bytesToPrint - frameS.etherLen;
-            printBytes( packetData + i, corrected, ' ');
-
-            // print character representation of last segment
-            printSpaces(BYTES_PER_LINE * 3 - corrected * 3);
-            printSpaces(1);
-            printChars( packetData + i, corrected);
-
-            // start new segment
-            printf("\nNetwork layer:\n");
-            printf("\t0x%04zx: ", i);
-            printSpaces(corrected * 3);
-            printBytes( packetData + i + corrected, bytesToPrint - corrected, ' ');
-
-            printSpaces(corrected + 1);
-            // print characters representation of new segment
-            if(bytesToPrint - corrected > 8)
-            {
-                printChars( packetData + i + corrected, 8 - corrected);
-                printf(" ");
-                printChars( packetData + i + corrected  + (8 - corrected), 8);
-            }
-            else
-            {
-                printChars( packetData + i, bytesToPrint - corrected);
-            }
+            printf("Data layer:\n");
+            printf("\t0x%04zx: ", hPos);
             
-            printf("\n");
-
-            ipNotPrinted = false;
+            actualVPos = 0;
         }
-        else if(!ipNotPrinted && ipProtocolNotPrinted && i + bytesToPrint > frameS.ipLen)
+        else if(bytesPrinted == frameS.dataLen)
         {
-            // print parts of last segment
-            printf("\t0x%04zx: ", i);
-            size_t skipped = i + bytesToPrint - frameS.ipLen;
-            printBytes( packetData + i, skipped, ' ');
-            
-            // print character representation of last segment
-            printSpaces(1 + skipped );
-            
-            if (skipped > 8)
-            {
-                printChars( packetData + i, 8);
-                printf(" ");
-                printChars( packetData + i + 8, skipped - 8);
-            }
-            else
-            {
-                printChars( packetData + i, skipped);
-                printf(" ");
-                printChars( packetData + i + skipped, bytesToPrint - skipped);
-            }
-            // start new segment
-            printf("\nTransport layer:\n");
-            printf("\t0x%04zx: ", i);
-            printSpaces(skipped * 3);
-            printBytes( packetData + i + skipped, bytesToPrint - skipped, ' ');
+            // fix indentation at end of line
+            printCharsAtEnd(&actualVPos, bytesPrinted, vPos, skipped, packetData);
 
-            // print characters representation of new segment
-            printf(" "); // indent from hex values
-            printSpaces(skipped + 1);
-            if(skipped > 8)
-            {
-                printChars( packetData + i + skipped, bytesToPrint - skipped);
-            }
-            else
-            {
-                printChars( packetData + i + skipped, 8 - skipped);
-                printf(" ");
-                printChars( packetData + i + skipped + (8 - skipped), bytesToPrint - (8 - skipped));
-            }
-            printf("\n");
-
-            ipProtocolNotPrinted = false;
+            printf("Network layer:\n");
+            printf("\t0x%04zx: ", hPos);
+            actualVPos = 0;
         }
-        else
+        else if(bytesPrinted == frameS.networkLen)
         {
-            printf("\t0x%04zx: ", i);
-            printBytes( packetData + i, bytesToPrint, ' ');
+            // fix indentation at end of line
+            printCharsAtEnd(&actualVPos, bytesPrinted, vPos, skipped, packetData);
 
-            printSpaces(tabs + 1);
-            if(bytesToPrint > 8)
-            {
-                printChars( packetData + i, 8);
-                printf(" ");
-                printChars( packetData + i + 8, bytesToPrint - 8);
-            }
-            printf("\n");
+            printf("Transport layer:\n");
+            printf("\t0x%04zx: ", hPos);
+            actualVPos = 0;
         }
+
+        // fix indentation if layer segment was changed
+        for(; actualVPos < vPos; actualVPos++)
+        {
+            printf(" ");
+            skipped++; // count skipped characters
+        }
+
+        // vertical position is over allowed bytes per line add new line
+        if(vPos >= BYTES_PER_LINE * VPOS_B_SIZE)
+        {
+            skipped = skipped / VPOS_B_SIZE;
+            // fix indentation at end of line
+            printCharsAtEnd(&actualVPos, bytesPrinted, vPos, skipped, packetData);
+
+            hPos++;
+            printf("\t0x%04zx: ", hPos);
+            vPos = 0;
+            actualVPos = 0;
+            skipped = 0;
+        }
+
+        // print byte and separator
+        printf("%02hhx ", byte);
+
+        vPos+= VPOS_B_SIZE;
+        actualVPos += VPOS_B_SIZE;
     }
+
+    printCharsAtEnd(&actualVPos, bytesPrinted, vPos, skipped, packetData);
 }
 
 void* threadFunction(void* vargp)
@@ -308,13 +279,18 @@ void* threadFunction(void* vargp)
 
         UNLOCK_AND_CHECK_CONFIG;
         LOCK_CONFIG;
+        
         // --------------------------------------------------------------------
-        printf("\n");
 
-        if(betterHexDump)
-            printBetterHexDump(header->len, packetData, frameSelection);
-        else
-            printHexDump(header->len, packetData);
+        // if(betterHexDump)
+        //     printBetterHexDump(header->len, packetData, frameSelection);
+        // else
+        //     printHexDump(header->len, packetData);
+
+        if(betterHexDump) {}
+        printBetterHexDump(header->len, packetData, frameSelection);
+        printf("\n\n\n\n");
+        printHexDump(header->len, packetData);
 
         packetCounter++;
         printf("\n");
@@ -328,10 +304,7 @@ void* threadFunction(void* vargp)
 
 int main(int argc, char* argv[])
 {
-    // ------------------------------------------------------------------------
     // Create and setup ProgramConfiguration
-    // ------------------------------------------------------------------------
-    
     Config* config = (Config*) malloc(sizeof(Config));
     if(config == NULL)
     {
@@ -344,34 +317,24 @@ int main(int argc, char* argv[])
 
     signal(SIGINT, sigintHandler);
 
-    // ------------------------------------------------------------------------
     // Handle program arguments
-    // ------------------------------------------------------------------------
-
     argumentHandler(argc, argv, config);
-
-    // ------------------------------------------------------------------------
-    // Setup pcap
-    // ------------------------------------------------------------------------
 
     // Setup pcap
     config->cleanup.handle = pcapSetup(config, &(config->cleanup.allDevices));
 
-    // ------------------------------------------------------------------------
-    // Start getting packets
-    // ------------------------------------------------------------------------
 
+    // Start getting packets in another thread
     pthread_t thread;
     pthread_create(&thread, NULL, threadFunction, config);
     pthread_join(thread, NULL);
 
-    // ------------------------------------------------------------------------
     // Close and cleanup
-    // ------------------------------------------------------------------------
-
     if(config != NULL)
     {    
         destroyConfig(config, false);
     }   
     return 0;
 }
+
+

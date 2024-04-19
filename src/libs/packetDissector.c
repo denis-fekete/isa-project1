@@ -19,7 +19,7 @@ FrameSections frameDissector(const unsigned char* packet, size_t length)
     FrameSections frameS;
 
     eth = (EthernetHeader *) packet;
-    printf("Frame: \n");
+    printf("Ethernet: \n");
     printf("\tsrc MAC: ");
     printBytes(eth->dst, ETHERNET_ADDR_LEN, ':');
     printf("\n");
@@ -39,8 +39,9 @@ FrameSections frameDissector(const unsigned char* packet, size_t length)
                     length - sizeof(EthernetHeader) - sizeof(struct iphdr)
                     );
             
-            frameS.etherLen = sizeof(EthernetHeader);
-            frameS.ipLen = sizeof(struct iphdr);
+            frameS.dataLen = sizeof(EthernetHeader);
+            frameS.networkLen = sizeof(struct iphdr);
+            frameS.transportLen = length - frameS.dataLen - frameS.networkLen;
             break;
         case ETH_TYPE_IPV6:
             protocol = ipv6Dissector(packet + sizeof(EthernetHeader));
@@ -49,15 +50,15 @@ FrameSections frameDissector(const unsigned char* packet, size_t length)
                     length - sizeof(EthernetHeader) - sizeof(struct ip6_hdr)
                     );
 
-            frameS.etherLen = sizeof(EthernetHeader);
-            frameS.ipLen = sizeof(struct iphdr);
-            frameS.ipProtocolLen = length - frameS.etherLen - frameS.ipLen;
+            frameS.dataLen = sizeof(EthernetHeader);
+            frameS.networkLen = sizeof(struct ip6_hdr);
+            frameS.transportLen = length - frameS.dataLen - frameS.networkLen;
             break;
         case ETH_TYPE_ARP:
             arpDissector(packet + sizeof(EthernetHeader));
-            frameS.etherLen = sizeof(EthernetHeader);
-            frameS.ipLen = sizeof(struct arphdr);
-            frameS.ipProtocolLen = length - frameS.etherLen - frameS.ipLen;
+            frameS.dataLen = sizeof(EthernetHeader);
+            frameS.networkLen = length - frameS.dataLen;
+            frameS.transportLen = 0;
             break;
         default:
             printf("EtherType: (%hhx %hhx)\n", eth->etherType[0], eth->etherType[1]);
@@ -65,7 +66,6 @@ FrameSections frameDissector(const unsigned char* packet, size_t length)
             break;
     }
 
-    if(length) {}
     return frameS;
 }
 

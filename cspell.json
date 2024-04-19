@@ -7,13 +7,20 @@
         "Datagram",
         "dopt",
         "Errbuff",
+        "hexdump",
         "icmphdr",
         "iphdr",
+        "ipk",
+        "OSI",
+        "pcap",
         "RARP",
         "RREPLY",
         "RREQUEST",
+        "struct",
         "uchars",
-        "vargp"
+        "vargp",
+        "VPOS",
+        "Wireshark"
     ],
     "ignoreWords": [],
     "import": []

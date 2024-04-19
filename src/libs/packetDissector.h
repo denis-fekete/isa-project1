@@ -48,9 +48,9 @@
 
 typedef struct FrameSections
 {
-    unsigned int etherLen;
-    unsigned int ipLen;
-    unsigned int ipProtocolLen;
+    unsigned int dataLen;
+    unsigned int networkLen;
+    unsigned int transportLen;
 } FrameSections;
 
 typedef struct EthernetHeader
