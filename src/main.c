@@ -136,13 +136,33 @@ void printHexDump(size_t maxLen, const unsigned char* packetData)
     }
 }
 
-void printBetterHexDump(size_t maxLen, const unsigned char* packetData, FrameSections frameSelections)
+void printSpaces(size_t numOfSpaces)
 {
-    size_t bytesToPrint = 0;
-    short unsigned int tabs = 0;
+    for(size_t i = 0; i < numOfSpaces; i++)
+    {
+        printf(" ");
+    }
+}
 
-    printf("Ethernet:\n");
-    for(size_t i = 0; i < frameSelections.etherLen; i += BYTES_PER_LINE)
+void printBetterHexDump(size_t maxLen, const unsigned char* packetData, FrameSections frameS)
+{
+    // printf("Ethernet:\n");
+    // printBytes(packetData, frameS.etherLen, ' ');
+    // printf("\nInternet Protocol:\n");
+    // printBytes(packetData + frameS.etherLen, frameS.ipLen, ' ');
+    // printf("\nProtocol:\n");
+    // printBytes(packetData + frameS.etherLen + frameS.ipLen, frameS.ipProtocolLen, ' ');
+    // printf("\n");
+
+    bool ipNotPrinted = true;
+    bool ipProtocolNotPrinted = true;
+
+
+    long long int bytesToPrint = 0;
+    short unsigned int tabs = 0;
+    printf("Data layer:\n");
+    printf("\t0x0000: ");
+    for(size_t i = 0; i < maxLen; i += BYTES_PER_LINE)
     {
         // check if bytes to be printed on line is smaller number than header.len - i
         if(BYTES_PER_LINE < ((long long unsigned ) maxLen) - i)
@@ -158,42 +178,100 @@ void printBetterHexDump(size_t maxLen, const unsigned char* packetData, FrameSec
         }
 
         // print line number in hex
-        printf("0x%04zx: ", i);
         // print hexadecimal values
-
-        if(i == frameSelections.etherLen)
-            printf("Internet Protocol:\n");
-        else if(i == frameSelections.ipLen)
-            printf("Protocol:\n");
-
-        for(size_t k = 0; k < bytesToPrint; k++)
+        if(ipNotPrinted && i + bytesToPrint > frameS.etherLen)
         {
-            if(i + k == frameSelections.etherLen)
-            {
-                printf("\nInternet Protocol:\n");
-            }
-            else if(i + k == frameSelections.ipLen)
-            {
-                printf("\nProtocol:\n");
-            }
+            // print parts of last segment
+            size_t corrected = i + bytesToPrint - frameS.etherLen;
+            printBytes( packetData + i, corrected, ' ');
 
-            printf("%02hhx", (unsigned char) (packetData + i)[k]);
-            if(k < bytesToPrint - 1)
+            // print character representation of last segment
+            printSpaces(BYTES_PER_LINE * 3 - corrected * 3);
+            printSpaces(1);
+            printChars( packetData + i, corrected);
+
+            // start new segment
+            printf("\nNetwork layer:\n");
+            printf("\t0x%04zx: ", i);
+            printSpaces(corrected * 3);
+            printBytes( packetData + i + corrected, bytesToPrint - corrected, ' ');
+
+            printSpaces(corrected + 1);
+            // print characters representation of new segment
+            if(bytesToPrint - corrected > 8)
             {
-                printf("%c", ' ');
+                printChars( packetData + i + corrected, 8 - corrected);
+                printf(" ");
+                printChars( packetData + i + corrected  + (8 - corrected), 8);
             }
+            else
+            {
+                printChars( packetData + i, bytesToPrint - corrected);
+            }
+            
+            printf("\n");
+
+            ipNotPrinted = false;
         }
-
-        // separate
-        printf(" ");
-        // correct tabulation if last row is not full
-        for(short unsigned int k = 0; k < tabs; k++)
+        else if(!ipNotPrinted && ipProtocolNotPrinted && i + bytesToPrint > frameS.ipLen)
         {
-            printf(" ");
+            // print parts of last segment
+            printf("\t0x%04zx: ", i);
+            size_t skipped = i + bytesToPrint - frameS.ipLen;
+            printBytes( packetData + i, skipped, ' ');
+            
+            // print character representation of last segment
+            printSpaces(1 + skipped );
+            
+            if (skipped > 8)
+            {
+                printChars( packetData + i, 8);
+                printf(" ");
+                printChars( packetData + i + 8, skipped - 8);
+            }
+            else
+            {
+                printChars( packetData + i, skipped);
+                printf(" ");
+                printChars( packetData + i + skipped, bytesToPrint - skipped);
+            }
+            // start new segment
+            printf("\nTransport layer:\n");
+            printf("\t0x%04zx: ", i);
+            printSpaces(skipped * 3);
+            printBytes( packetData + i + skipped, bytesToPrint - skipped, ' ');
+
+            // print characters representation of new segment
+            printf(" "); // indent from hex values
+            printSpaces(skipped + 1);
+            if(skipped > 8)
+            {
+                printChars( packetData + i + skipped, bytesToPrint - skipped);
+            }
+            else
+            {
+                printChars( packetData + i + skipped, 8 - skipped);
+                printf(" ");
+                printChars( packetData + i + skipped + (8 - skipped), bytesToPrint - (8 - skipped));
+            }
+            printf("\n");
+
+            ipProtocolNotPrinted = false;
         }
-        // print as printable characters
-        printChars( packetData + i, bytesToPrint);
-        printf("\n");
+        else
+        {
+            printf("\t0x%04zx: ", i);
+            printBytes( packetData + i, bytesToPrint, ' ');
+
+            printSpaces(tabs + 1);
+            if(bytesToPrint > 8)
+            {
+                printChars( packetData + i, 8);
+                printf(" ");
+                printChars( packetData + i + 8, bytesToPrint - 8);
+            }
+            printf("\n");
+        }
     }
 }
 
@@ -217,7 +295,7 @@ void* threadFunction(void* vargp)
 
         // short unsigned int tabsCorrected = 0;
         int res =  pcap_next_ex(config->cleanup.handle, &header, &packetData);
-        if(!res ) {continue;}
+        if(!res ) { errHandling("Capturing packet failed!", 99); }
 
         UNLOCK_AND_CHECK_CONFIG;
         LOCK_CONFIG;
@@ -271,10 +349,6 @@ int main(int argc, char* argv[])
     // ------------------------------------------------------------------------
 
     argumentHandler(argc, argv, config);
-    // #ifdef DEBUG
-    //     printConfig(config);
-    //     printf("\n");
-    // #endif
 
     // ------------------------------------------------------------------------
     // Setup pcap

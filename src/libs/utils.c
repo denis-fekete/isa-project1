@@ -120,12 +120,6 @@ void printChars(const unsigned char* byteArr, size_t len)
             printf("%c", (unsigned char) byteArr[i]);
         else
             printf(".");
-        
-        // after 8th byte add space
-        if(i == 7)
-        {
-            printf(" ");
-        }
     }
 }
 
