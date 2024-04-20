@@ -17,6 +17,7 @@ void setupConfig(Config* config)
     config->mld = false;
     config->numberOfPackets = 1;
     config->useFilter = false;
+    config->wsHexdump = false;
     // ------------------------------------------------------------------------
     config->interface = malloc(sizeof(Buffer));
     if(config->interface == NULL)
@@ -97,9 +98,8 @@ void setupConfig(Config* config)
  * @brief Destroys and frees all values inside Config
  * 
  * @param config pointer to Config to be destroyed
- * @param noMutex if true wont destory mutex and config
  */
-void destroyConfig(Config* config, bool noMutex)
+void destroyConfig(Config* config)
 {
     bufferDestroy(config->interface);
     bufferDestroy(config->port);
@@ -122,26 +122,19 @@ void destroyConfig(Config* config, bool noMutex)
     free(config->cleanup.pcapErrbuff);
     config->cleanup.pcapErrbuff = NULL;
 
-    // if ended before pcapSetup dont dont close it
-    if(config->cleanup.handle != NULL)
-    {
-        pcap_close(config->cleanup.handle);
-        pcap_freealldevs(config->cleanup.allDevices);
-    }
+    // if ended before pcapSetup dont dont close it  
+    pcap_close(config->cleanup.handle);
+    pcap_freealldevs(config->cleanup.allDevices);
 
-    if(!noMutex)
-    {
-        pthread_mutex_destroy(config->cleanup.configMutex);
-        free(config->cleanup.configMutex);
-        free(config);
-    }
-
+    pthread_mutex_destroy(config->cleanup.configMutex);
+    free(config->cleanup.configMutex);
+    free(config);
 }
 
 
 #define BOOL_TO_STR(boolVal) (boolVal)? "true" : "false"
 /**
- * @brief Prints currect configuration to stdout
+ * @brief Prints current configuration to stdout
  * 
  * @param config 
  */

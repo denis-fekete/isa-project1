@@ -30,6 +30,7 @@ static struct option long_options[] =
     {"ndp",                     no_argument,        0, dopt_NDP},
     {"igmp",                    no_argument,        0, dopt_IGMP},
     {"mld",                     no_argument,        0, dopt_MLD},
+    {"wslike",                  no_argument,        0, dopt_WSLIKE},
     {0, 0, 0, 0}
 };
 
@@ -89,6 +90,8 @@ void argumentHandler(int argc, char* argv[], Config* config)
             case dopt_IGMP: config->igmp = true;
                 break;
             case dopt_MLD: config->mld = true; 
+                break;
+            case dopt_WSLIKE: config->wsHexdump = true; 
                 break;
             case 't':
                 config->tcp = true;
@@ -154,22 +157,37 @@ void printCliHelpMenu(const char* executableName)
         "UDP (based on -t OPTION)\n"
         "\n"
         "Mandatory options:\n"
-        "\t-s\t- "
-        "Sets server IP address (can be in \"www.server.com\" format) "
-        "to which client will try to connect\n"
-        "\t-t\t- "
-        "Sets between UDP or TCP protocol to be used for sending messages to server\n"
+        "\t-i | --interface\t- "
+        "Sets interface from which will program capture network traffic\n"
         "\nNon-mandatory options:\n"
-        "\t-p\t- "
-        "Specifies which port will client try to connect to at specified "
-        "IP adress. Default value is 4567.\n"
-        "\t-d\t- "
-        "Sets UDP confirmation timeout in milliseconds\n"
-        "\t-r\t- "
-        "Sets maximum number of UDP retransmissions\n"
-        "\t-h\t- "
+        "\t--arp\t\t\t- "
+        "Only ARP packets will be captured\n"
+        "\t--icmp4\t\t\t- "
+        "Only ICMP for IPv4 will be captured\n"
+        "\t--icmp6\t\t\t- "
+        "Only ICMP for IPv6 will be captured\n"
+        "\t--igmp\t\t\t- "
+        "Only IGMP will be captured\n"
+        "\t-h | --help\t\t\t- "
         "Prints this help menu end exits program with code 0\n"
-
+        "\t--ndp\t\t\t- "
+        "Only NDP will be captured\n"
+        "\t--MLD\t\t\t- "
+        "Only MLD will be captured\n"
+        "\t-p\t\t\t- "
+        "Will display only traffic that has {PORT_NUMBER} as source or destination\n"
+        "\t--port-destination {PORT_NUMBER}\t\t- "
+        "Will display only traffic that has {PORT_NUMBER} destination port "
+        "(can be combined with --port-source)\n"
+        "\t--port-source {PORT_NUMBER}\t\t\t- "
+        "Will display only traffic that has {PORT_NUMBER} source port "
+        "(can be combined with --port-destination)\n"
+        "\t--tcp\t\t\t- "
+        "Only TCP packets will be captured (can be combined with --udp option)\n"
+        "\t--udp\t\t\t- "
+        "Only UDO packets will be captured (can be combined with --tcp option)\n"
+        "\t--wslike\t\t\t- "
+        "Printed hexdump will be formatted more like wireshark\n"
         , executableName
     );
 }

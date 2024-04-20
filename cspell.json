@@ -4,6 +4,7 @@
     "dictionaryDefinitions": [],
     "dictionaries": [],
     "words": [
+        "Carstens",
         "Datagram",
         "dopt",
         "Errbuff",
@@ -20,7 +21,8 @@
         "uchars",
         "vargp",
         "VPOS",
-        "Wireshark"
+        "Wireshark",
+        "WSLIKE"
     ],
     "ignoreWords": [],
     "import": []

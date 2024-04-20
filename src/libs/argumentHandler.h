@@ -33,6 +33,7 @@ typedef enum DisplayOptions
     dopt_NDP,
     dopt_IGMP,
     dopt_MLD,
+    dopt_WSLIKE,
 } dopt_t; 
 
 // ----------------------------------------------------------------------------

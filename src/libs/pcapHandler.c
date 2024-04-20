@@ -77,31 +77,26 @@ pcap_t* pcapSetup(Config* config, pcap_if_t** allDevices)
 
     if(config->useFilter)
     {
-
-
         // Creating a filter to only look for certain traffic
-
         // Filter expression
         Buffer expr = createFilterExpression(config);
         debugPrint(stdout, "DEBUG: Final expression of filter: ");
         bufferPrint(&expr, 1);
-
-        char* filter_exp = expr.data;
-        // filter_exp = "";  // debug
         struct bpf_program fp; // Stuct that holds compiled filter expression
-        if(pcap_compile(handle, &fp, filter_exp, 0, net) == PCAP_ERROR)
+        if(pcap_compile(handle, &fp, expr.data, 0, net) == PCAP_ERROR)
         {
-            fprintf(stderr, "ERR: Couldn't parse filter %s: %s\n", filter_exp, pcap_geterr(handle));
+            fprintf(stderr, "ERR: Couldn't parse filter %s: %s\n", expr.data, pcap_geterr(handle));
             errHandling("", ERR_LIBPCAP);
         }
 
         // Set the filter
         if(pcap_setfilter(handle, &fp) == -1)
         {
-            fprintf(stderr, "ERR: Couldn't install filter %s: %s\n", filter_exp, pcap_geterr(handle));
+            fprintf(stderr, "ERR: Couldn't install filter %s: %s\n", expr.data, pcap_geterr(handle));
             errHandling("", ERR_LIBPCAP);
         }
-
+        
+        free(fp.bf_insns);
         bufferDestroy(&expr);
     }
 

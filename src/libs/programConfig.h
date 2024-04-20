@@ -53,6 +53,7 @@ typedef struct ProgramConfiguration
     bool igmp;
     bool mld;
     bool useFilter;
+    bool wsHexdump;
     CleanUp cleanup;
     
 } Config;
@@ -79,8 +80,7 @@ void printConfig(Config* config);
  * @brief Destroys and frees all values inside Config
  * 
  * @param config pointer to Config to be destroyed
- * @param noMutex if true wont destory mutex and config
  */
-void destroyConfig(Config* config, bool noMutex);
+void destroyConfig(Config* config);
 
 #endif /*PROGRAM_CONFIG_H*/
