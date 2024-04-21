@@ -101,6 +101,7 @@ After filters have been set up, a new thread is created that will loop and captu
 In the main loop a desired number of network traffic is captured and displayed to the user. Byte array containing data is broken into parts and length of each part is stored in the **FrameSelections** structure. This structure is later used for the correct printing of hexdump-like representation of bytes.
 
 ## Output explanation
+The program "hexdump" format is by default different then what Wireshark looks like, this makes it more user-friendly in finding bytes that the user might be interested in.
 
 ```
 Number: 0
@@ -146,8 +147,7 @@ IPv4 Packet:
 *Output of the program for captured ICMPv4 with --wslike argument enabled.*
 
 ## Testing
-Testing was done by comparing output from Wireshark application and ipk-sniffer. 
-
+Testing was done by comparing output from Wireshark application and ipk-sniffer while capturing traffic on network or by sending generated traffic by Python scripts in */tests* directory through *loopback* interface. 
 
 
 ### Bibliography

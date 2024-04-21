@@ -23,6 +23,7 @@
 #include "netinet/udp.h"
 #include "netinet/ip_icmp.h"
 #include "netinet/icmp6.h"
+#include "arpa/inet.h"
 
 #include "netinet/igmp.h"
 

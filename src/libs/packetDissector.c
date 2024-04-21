@@ -275,23 +275,10 @@ void ipv6ProtocolDissector(unsigned char protocol, const unsigned char* packet, 
  */
 void printIPv6(u_int32_t* address)
 {
-    u_int32_t addressCorrected[4];
-    addressCorrected[0] = ntohl(address[0]);
-    addressCorrected[1] = ntohl(address[1]);
-    addressCorrected[2] = ntohl(address[2]);
-    addressCorrected[3] = ntohl(address[3]);
-
-    for(short i = 128 ; i >= 0 ; i -= 8)
-    {
-        printf("%hu", ((*addressCorrected) >> i) & 0xFF);
-        
-        if(i != 0)
-        {
-            printf(":");
-        }
-    }
-
-    printf("\n");
+    char buffer[40];
+    inet_ntop(AF_INET6, address, buffer, 40);
+    
+    printf("%s\n", buffer);
 }
 
 // ----------------------------------------------------------------------------
