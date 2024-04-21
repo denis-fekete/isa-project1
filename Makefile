@@ -5,7 +5,6 @@ TARGET = ipk-sniffer
 LIB_DIR = $(SRC_DIR)/libs
 
 CC = gcc
-# CVERSTION = -std=c17
 CVERSTION = -std=gnu17
 LDFLAGS := -lm
 LPCAP := -lpcap
@@ -40,14 +39,8 @@ $(OBJ_DIR)/libs/%.o: $(LIB_DIR)/%.c
 
 .PHONY: clean doc
 
-doc:
-	doxygen Doxyfile
-	pip install esp-doxybook
-	esp-doxybook -i docs/xml -o ./README.md
-	clear
-
-doc_clean:
-	rm -r ./docs/docbook ./docs/html ./docs/latex ./docs/man ./docs/xml
+zip:
+	zip -r xfeket01.zip src/* tests/* README.md Makefile LICENSE CHANGELOG.md docs/*
 
 clean:
 	rm -rf $(OBJ_DIR)/*.o $(OBJ_DIR)/libs/*.o $(TARGET)

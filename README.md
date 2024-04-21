@@ -149,6 +149,81 @@ IPv4 Packet:
 ## Testing
 Testing was done by comparing output from Wireshark application and ipk-sniffer while capturing traffic on network or by sending generated traffic by Python scripts in */tests* directory through *loopback* interface. 
 
+Example of testing program:
+
+1. Start Wireshark (appropriate permissions must be set, I used sudo) 
+```
+$ wireshark
+
+or
+
+$ sudo wireshark
+```
+
+2. In the menu select `loopback` interface (`lo`). Write the appropriate filter into the filter bar, in this example `(icmp)` will be used.
+
+![Image from testing step number 2](docs/testing_step_2_img.png)
+
+3. Open new terminal and navigate to the root directory of this project. In this directory (assuming that the program was already compiled, if not first use command `make`) run the ipk-sniffer program with appropriate permissions, in this test `sudo` was used. Quick explanation: `-i lo` sets interface to loopback interface (same we selected in Wireshark) and ``--icmp`` will filter out messages that are not ICMP for IPv4.
+```
+ipk-project2$ ./ipk-sniffer -i lo --icmp
+
+or
+
+ipk-project2$ sudo ./ipk-sniffer -i lo --icmp
+```
+*used commands*
+
+```
+ipk-project2$ sudo ./ipk-sniffer -i lo --icmp4
+
+```
+*illustrative output of the program after using the command*
+
+4. Open new terminal and navigate to the `tests` directory of this project. In this directory run python script `send_icmp.py` with appropriate permissions, in this example first `su` was used to switch to privileged mode, then `python3.10` command was used.
+```
+ipk-project2$ su
+# enter password #
+ipk-project2/tests# python3.10 send_icmp.py
+```
+*used commands*
+
+```
+ipk-project2/tests$ su
+Password:
+ipk-project2/tests# python3.10 send_icmp.py
+.
+Sent 1 packets.
+```
+*illustrative output of the program after using the command*
+
+5. On the output of the terminal and Wireshark we can see that the values are same. It should be noted that some bytes might be different if filter `icmp` were used instead of `(icmp)` in filter bar.
+```
+Number: 0
+        timestamp: 2024-04-21T21:40:10.833+00:00
+Ethernet:
+        src MAC: ff:ff:ff:ff:ff:ff
+        dst MAC: 00:00:00:00:00:00
+        frame length: 42 bytes
+IPv4 Packet:
+        src IP: 127.0.0.1
+        dst IP: 127.0.0.1
+        Protocol: icmp
+                type: 8 (0x8)
+                code: 0 (0x0)
+Data layer:
+        0x0000: ff ff ff ff ff ff 00 00 00 00 00 00 08 00       ........ ......
+Network layer:
+        0x0000:                                           45 00               E.
+        0x0001: 00 1c 00 01                                     ....
+Transport layer:
+        0x0001:             00 00 40 01 7c de 7f 00 00 01 7f 00     ..@. |.......
+        0x0002: 00 01 08 00 f7 ff 00 00 00 00                   ........ ..
+```
+*output from ipk-sniffer (in a different terminal)*
+
+![Image from testing step number 5](docs/testing_step_5_img.png)
+*output from Wireshark*
 
 ### Bibliography
 https://www.gnu.org/software/libc/manual/html_node/Getopt-Long-Option-Example.html
