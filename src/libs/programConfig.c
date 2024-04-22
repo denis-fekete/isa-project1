@@ -24,6 +24,7 @@ void setupConfig(Config* config)
     {
         free(config);
         errHandling("Failed to allocate memory for config->interface", ERR_MALLOC);
+        return;
     }
     config->port = malloc(sizeof(Buffer));
     if(config->port == NULL)
@@ -31,6 +32,7 @@ void setupConfig(Config* config)
         free(config->interface);
         free(config);
         errHandling("Failed to allocate memory for config->port", ERR_MALLOC);
+        return;
     }
     config->portDst = malloc(sizeof(Buffer));
     if(config->portDst == NULL)
@@ -39,6 +41,7 @@ void setupConfig(Config* config)
         free(config->port);
         free(config);
         errHandling("Failed to allocate memory for config->portDst", ERR_MALLOC);
+        return;
     }
     config->portSrc = malloc(sizeof(Buffer));
     if(config->portSrc == NULL)
@@ -48,6 +51,7 @@ void setupConfig(Config* config)
         free(config->portDst);
         free(config);
         errHandling("Failed to allocate memory for config->portSrc", ERR_MALLOC);
+        return;
     }
 
     bufferInit(config->interface);
@@ -63,6 +67,7 @@ void setupConfig(Config* config)
         free(config->portSrc);
         free(config);
         errHandling("Failed to allocate memory for config->cleanUp", ERR_MALLOC);
+        return;
     }
 
     config->cleanup.pcapErrbuff = (char*)malloc(PCAP_ERRBUF_SIZE);
@@ -74,6 +79,7 @@ void setupConfig(Config* config)
         free(config->cleanup.timeptr);
         free(config);
         errHandling("Failed to allocate memory for config->cleanUp", ERR_MALLOC);
+        return;
     }
 
     config->cleanup.allDevices = NULL;
@@ -89,6 +95,7 @@ void setupConfig(Config* config)
         free(config->cleanup.pcapErrbuff);
         free(config);
         errHandling("Failed to allocate memory for config->configMutex", ERR_MALLOC);
+        return;
     }
 
     pthread_mutex_init(config->cleanup.configMutex, NULL);
