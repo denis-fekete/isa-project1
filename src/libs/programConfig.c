@@ -7,17 +7,7 @@
  */
 void setupConfig(Config* config)
 {
-    config->tcp = false;
-    config->udp = false;
-    config->icmp4 = false;
-    config->icmp6 = false;
-    config->arp = false;
-    config->ndp = false;
-    config->igmp = false;
-    config->mld = false;
     config->numberOfPackets = 1;
-    config->useFilter = false;
-    config->wsHexdump = false;
     // ------------------------------------------------------------------------
     config->interface = malloc(sizeof(Buffer));
     if(config->interface == NULL)
@@ -26,45 +16,45 @@ void setupConfig(Config* config)
         errHandling("Failed to allocate memory for config->interface", ERR_MALLOC);
         return;
     }
-    config->port = malloc(sizeof(Buffer));
-    if(config->port == NULL)
+    config->pcapfile = malloc(sizeof(Buffer));
+    if(config->pcapfile == NULL)
     {
         free(config->interface);
         free(config);
-        errHandling("Failed to allocate memory for config->port", ERR_MALLOC);
+        errHandling("Failed to allocate memory for config->pcapfile", ERR_MALLOC);
         return;
     }
-    config->portDst = malloc(sizeof(Buffer));
-    if(config->portDst == NULL)
+    config->domainsfile = malloc(sizeof(Buffer));
+    if(config->domainsfile == NULL)
     {
         free(config->interface);
-        free(config->port);
+        free(config->pcapfile);
         free(config);
-        errHandling("Failed to allocate memory for config->portDst", ERR_MALLOC);
+        errHandling("Failed to allocate memory for config->domainsfile", ERR_MALLOC);
         return;
     }
-    config->portSrc = malloc(sizeof(Buffer));
-    if(config->portSrc == NULL)
+    config->translationsfile = malloc(sizeof(Buffer));
+    if(config->translationsfile == NULL)
     {
         free(config->interface);
-        free(config->port);
-        free(config->portDst);
+        free(config->pcapfile);
+        free(config->domainsfile);
         free(config);
         errHandling("Failed to allocate memory for config->portSrc", ERR_MALLOC);
         return;
     }
 
     bufferInit(config->interface);
-    bufferInit(config->port);
-    bufferInit(config->portDst);
-    bufferInit(config->portSrc);
+    bufferInit(config->pcapfile);
+    bufferInit(config->domainsfile);
+    bufferInit(config->translationsfile);
     // ------------------------------------------------------------------------
     config->cleanup.timeptr = (char*)malloc(RFC3339_TIME_LEN);
     if (config->cleanup.timeptr == NULL) {
         free(config->interface);
-        free(config->port);
-        free(config->portDst);
-        free(config->portSrc);
+        free(config->pcapfile);
+        free(config->domainsfile);
+        free(config->translationsfile);
         free(config);
         errHandling("Failed to allocate memory for config->cleanUp", ERR_MALLOC);
         return;
@@ -73,9 +63,9 @@ void setupConfig(Config* config)
     config->cleanup.pcapErrbuff = (char*)malloc(PCAP_ERRBUF_SIZE);
     if (config->cleanup.timeptr == NULL) {
         free(config->interface);
-        free(config->port);
-        free(config->portDst);
-        free(config->portSrc);
+        free(config->pcapfile);
+        free(config->domainsfile);
+        free(config->translationsfile);
         free(config->cleanup.timeptr);
         free(config);
         errHandling("Failed to allocate memory for config->cleanUp", ERR_MALLOC);
@@ -88,9 +78,9 @@ void setupConfig(Config* config)
     config->cleanup.configMutex = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
     if (config->cleanup.configMutex == NULL) {
         free(config->interface);
-        free(config->port);
-        free(config->portDst);
-        free(config->portSrc);
+        free(config->pcapfile);
+        free(config->domainsfile);
+        free(config->translationsfile);
         free(config->cleanup.timeptr);
         free(config->cleanup.pcapErrbuff);
         free(config);
@@ -109,19 +99,19 @@ void setupConfig(Config* config)
 void destroyConfig(Config* config)
 {
     bufferDestroy(config->interface);
-    bufferDestroy(config->port);
-    bufferDestroy(config->portDst);
-    bufferDestroy(config->portSrc);
+    bufferDestroy(config->pcapfile);
+    bufferDestroy(config->domainsfile);
+    bufferDestroy(config->translationsfile);
 
     free(config->interface);
-    free(config->port);
-    free(config->portDst);
-    free(config->portSrc);
+    free(config->pcapfile);
+    free(config->domainsfile);
+    free(config->translationsfile);
 
     config->interface = NULL;
-    config->port = NULL;
-    config->portDst = NULL;
-    config->portSrc = NULL;
+    config->pcapfile = NULL;
+    config->domainsfile = NULL;
+    config->translationsfile = NULL;
 
     free(config->cleanup.timeptr);
     config->cleanup.timeptr = NULL;
@@ -149,13 +139,8 @@ void printConfig(Config* config)
 {
     printf("Config options:\n");
     printf("\tInterface: %s\n", config->interface->data);
-    printf("\tDst port: %s\n", config->portDst->data);
-    printf("\tSrc port: %s\n", config->portSrc->data);
-    printf("\ttcp: %s\n", BOOL_TO_STR(config->tcp));
-    printf("\tudp: %s\n", BOOL_TO_STR(config->udp));
-    printf("\tarp: %s\n", BOOL_TO_STR(config->arp));
-    printf("\tndp: %s\n", BOOL_TO_STR(config->ndp));
-    printf("\tigmp: %s\n", BOOL_TO_STR(config->igmp));
-    printf("\tmld: %s\n", BOOL_TO_STR(config->mld));
+    printf("\tPCAP filename: %s\n", config->pcapfile->data);
+    printf("\tDomains filename: %s\n", config->domainsfile->data);
+    printf("\tTranslations filename: %s\n", config->translationsfile->data);
     printf("\tNO Packets: %u\n", config->numberOfPackets);
 }

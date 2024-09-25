@@ -36,7 +36,7 @@
  * @param config pointer to global configuration where string pointer is stored
  * @return char* 
  */
-char* timeval2rfc3339(struct timeval tv, Config* config);
+char* getTimestamp(struct timeval tv, Config* config);
 
 /**
  * @brief Print hexdump-like to standard output

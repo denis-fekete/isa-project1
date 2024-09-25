@@ -10,7 +10,7 @@
  * @param config pointer to global configuration where string pointer is stored
  * @return char* 
  */
-char* timeval2rfc3339(struct timeval tv, Config* config)
+char* getTimestamp(struct timeval tv, Config* config)
 {
     char* rtcTime = config->cleanup.timeptr;
 
@@ -23,29 +23,10 @@ char* timeval2rfc3339(struct timeval tv, Config* config)
     }
 
     // add year, month, hour and seconds
-    if (strftime(rtcTime, RFC3339_TIME_LEN, "%Y-%m-%dT%T%z", tm_info) == 0)
+    if (strftime(rtcTime, RFC3339_TIME_LEN, "%Y-%m-%d %T", tm_info) == 0)
      {
         errHandling("Failed to format time as RFC3339", 9/*TODO:*/);
     }
-
-    // add miliseconds
-    sprintf(rtcTime + 19, ".%03d", (int)(tv.tv_usec / 1000));
-
-    // store times zone to other variable
-    char timezone[TIMEZONE_LEN];
-    if (strftime(timezone, TIMEZONE_LEN, "%z", tm_info) == 0)
-    {
-        errHandling("Failed to format timezone", 9/*TODO:*/);
-    }
-
-    // modify timezone from +0000 to +00:00 format
-    timezone[5] = timezone[4]; // move last two digits
-    timezone[4] = timezone[3];
-    timezone[3] = ':'; // add :
-    timezone[TIMEZONE_LEN - 1] = '\0';
-
-    // add timezone
-    sprintf(rtcTime + 23, "%s", timezone);
 
     return rtcTime;
 }

@@ -75,150 +75,31 @@ pcap_t* pcapSetup(Config* config, pcap_if_t** allDevices)
         errHandling("", ERR_LIBPCAP);
     }
 
-    if(config->useFilter)
-    {
-        // Creating a filter to only look for certain traffic
-        // Filter expression
-        Buffer expr = createFilterExpression(config);
-        debugPrint(stdout, "DEBUG: Final expression of filter: ");
-        bufferPrint(&expr, 1);
-        struct bpf_program fp; // Stuct that holds compiled filter expression
-        if(pcap_compile(handle, &fp, expr.data, 0, net) == PCAP_ERROR)
-        {
-            fprintf(stderr, "ERR: Couldn't parse filter %s: %s\n", expr.data, pcap_geterr(handle));
-            errHandling("", ERR_LIBPCAP);
-        }
-
-        // Set the filter
-        if(pcap_setfilter(handle, &fp) == -1)
-        {
-            fprintf(stderr, "ERR: Couldn't install filter %s: %s\n", expr.data, pcap_geterr(handle));
-            errHandling("", ERR_LIBPCAP);
-        }
-        
-        free(fp.bf_insns);
-        bufferDestroy(&expr);
-    }
-
-    return handle;
-}
-
-// add or to filter expression if needed
-#define ADD_OR                                                                 \
-    if(expr.data != NULL && expr.data[expr.used -2] != '(')                    \
-    {                                                                          \
-        bufferAddString(&expr, " or ");                                        \
-    }                                   
-
-/**
- * @brief Creates Buffer and fills it with PCAP filters
- * 
- * @param config 
- * @return Buffer 
- */
-Buffer createFilterExpression(Config* config)
-{
+    // Creating a filter to only look for certain traffic
+    // Filter expression
     Buffer expr;
     bufferInit(&expr);
+    bufferAddString(&expr, "port 53");
+
+    debugPrint(stdout, "DEBUG: Final expression of filter: ");
+    bufferPrint(&expr, 1);
+
+    struct bpf_program fp; // Stuct that holds compiled filter expression
+    if(pcap_compile(handle, &fp, expr.data, 0, net) == PCAP_ERROR)
+    {
+        fprintf(stderr, "ERR: Couldn't parse filter %s: %s\n", expr.data, pcap_geterr(handle));
+        errHandling("", ERR_LIBPCAP);
+    }
+
+    // Set the filter
+    if(pcap_setfilter(handle, &fp) == -1)
+    {
+        fprintf(stderr, "ERR: Couldn't install filter %s: %s\n", expr.data, pcap_geterr(handle));
+        errHandling("", ERR_LIBPCAP);
+    }
     
-    bool noPrevious = true;
-    if(config->icmp4 || config->icmp6 || config->ndp || config->mld || config->arp || config->arp || config->igmp)
-    {
-        bufferAddString(&expr, "(");
-        if(config->icmp4)
-        {
-            bufferAddString(&expr, "icmp");
-        }
-        
-        // ndp and mld are subsets of ICMPv6 however pcap doesn't have build it 
-        // function to filter them out, so filtering will be done in later steps
-        if(config->icmp6 || config->ndp || config->mld)
-        {
-            ADD_OR;
-            bufferAddString(&expr, "icmp6");
-        }
+    free(fp.bf_insns);
+    bufferDestroy(&expr);
 
-        if(config->arp )
-        {
-            ADD_OR;
-            bufferAddString(&expr, "arp");
-        }
-
-        if(config->igmp)
-        {
-            ADD_OR;
-            bufferAddString(&expr, "igmp");
-        }
-        bufferAddString(&expr, ")");
-
-        noPrevious = false;
-    }
-
-    if( config->port->data != NULL || 
-        config->portDst->data != NULL || 
-        config->portSrc->data != NULL)
-    {
-        if(!noPrevious)
-        {
-            bufferAddString(&expr, " and (");
-        }
-
-        if(config->port->data != NULL)
-        {
-            bufferAddString(&expr, "port ");
-            bufferAddString(&expr, config->port->data);
-        }
-        
-        if (config->portDst->data != NULL)
-        {
-            bufferAddString(&expr, "dst port ");
-            bufferAddString(&expr, config->portDst->data);
-            
-        }
-        if (config->portSrc->data != NULL)
-        {
-            if(config->portDst->data != NULL)
-            {
-                bufferAddString(&expr, " ");
-            }
-
-            bufferAddString(&expr, "src port ");
-            bufferAddString(&expr, config->portSrc->data);
-        }
-
-        if(!noPrevious)
-        {
-            bufferAddString(&expr, ")");
-        }
-    }
-
-    if(config->tcp || config->udp)
-    {
-        if(!noPrevious)
-        {
-            bufferAddString(&expr, " and (");
-        }
-
-        if(config->tcp)
-        {
-            bufferAddString(&expr, "tcp");
-        }
-        
-        if(config->udp)
-        {
-            if(config->tcp)
-            {
-                bufferAddString(&expr, " or ");
-            }
-
-            bufferAddString(&expr, "udp");
-        }
-
-        if(!noPrevious)
-        {
-            bufferAddString(&expr, ")");
-        }
-    }
-
-    return expr;
+    return handle;
 }

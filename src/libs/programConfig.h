@@ -40,20 +40,11 @@ typedef struct ProgramConfiguration
         // reuse interface as indication that program should
         void* exitOnNull;
     };
-    Buffer* port;
-    Buffer* portSrc;
-    Buffer* portDst;
-    unsigned int numberOfPackets;
-    bool tcp;
-    bool udp;
-    bool icmp4;
-    bool icmp6;
-    bool arp;
-    bool ndp;
-    bool igmp;
-    bool mld;
-    bool useFilter;
-    bool wsHexdump;
+    unsigned numberOfPackets;
+    Buffer* pcapfile;
+    Buffer* domainsfile;
+    Buffer* translationsfile;
+    bool verbose;
     CleanUp cleanup;
     
 } Config;

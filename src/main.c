@@ -57,21 +57,23 @@ void* threadFunction(void* vargp)
         LOCK_CONFIG;
         
         // --------------------------------------------------------------------
+        if(config->verbose) // verbose/simplified output
+        {
+            printf("%s", getTimestamp(header->ts, config));
 
-        printf("Number: %u\n", packetCounter);
-        printf("\ttimestamp: %s\n", timeval2rfc3339(header->ts, config));
+        }
+        else
+        {
+            printf("Timestamp: %s\n", getTimestamp(header->ts, config));
+            frameDissector(packetData, header->len);
 
-        FrameSections frameSelection =  frameDissector(packetData, header->len);
+        }
+
 
         UNLOCK_AND_CHECK_CONFIG;
         LOCK_CONFIG;
         
         // --------------------------------------------------------------------
-
-        if(!config->wsHexdump)
-            printBetterHexDump(header->len, packetData, frameSelection);
-        else
-            printHexDump(header->len, packetData);
 
         packetCounter++;
         printf("\n");
