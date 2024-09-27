@@ -32,6 +32,9 @@
 
 pcap_t* pcapSetup(Config* config, pcap_if_t** allDevices);
 
+pcap_t* pcapSetupOffline2(Config* config, pcap_if_t** allDevices);
+
+
 Buffer createFilterExpression(Config* config);
 
 #endif /*PCAP_HANDLER_H*/

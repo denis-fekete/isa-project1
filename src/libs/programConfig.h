@@ -31,22 +31,28 @@ typedef struct CleanUp {
     pthread_mutex_t* configMutex;
 } CleanUp;
 
+#define NO_MODE 0
+#define OFFLINE_MODE 1 
+#define ONLINE_MODE 2
 
 typedef struct ProgramConfiguration 
 {
     union
     {
         Buffer* interface;
-        // reuse interface as indication that program should
+        Buffer* pcapfile;
         void* exitOnNull;
     };
+
     unsigned numberOfPackets;
-    Buffer* pcapfile;
+    char captureMode;
+    bool verbose;
+
+    Buffer* addressToPrint;
     Buffer* domainsfile;
     Buffer* translationsfile;
-    bool verbose;
-    CleanUp cleanup;
     
+    CleanUp cleanup;
 } Config;
 
 // ----------------------------------------------------------------------------

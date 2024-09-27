@@ -97,7 +97,7 @@ u_int16_t uchars2uint16(unsigned char* value);
 // Ethernet frame
 // ----------------------------------------------------------------------------
 
-void frameDissector(const unsigned char* packet, size_t length);
+void frameDissector(const unsigned char* packet, size_t length, int verbose);
 
 // ----------------------------------------------------------------------------
 // Internet Protocol version 4

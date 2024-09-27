@@ -37,7 +37,9 @@ typedef enum ErrorCodes
     ERR_MALLOC,
     ERR_LIBPCAP,
     ERR_UNKNOWN_ARG,
-    ERR_BAD_ARGS
+    ERR_BAD_ARGS,
+    ERR_FILE,
+    ERR_UNKNOWN_PROTOCOL
 } errCodes_t;
 
 // ----------------------------------------------------------------------------

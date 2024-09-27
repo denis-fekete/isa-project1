@@ -6,6 +6,7 @@
     "words": [
         "Carstens",
         "Datagram",
+        "domainsfile",
         "dopt",
         "Errbuff",
         "Fekete",
@@ -20,6 +21,7 @@
         "RREQUEST",
         "RRTTL",
         "struct",
+        "translationsfile",
         "uchars",
         "vargp",
         "VPOS",

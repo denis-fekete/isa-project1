@@ -15,17 +15,17 @@ char* getTimestamp(struct timeval tv, Config* config)
     char* rtcTime = config->cleanup.timeptr;
 
     time_t time = tv.tv_sec;
-    // convert to correct UTC time format for strftime()
-    struct tm *tm_info = gmtime(&time);
+
+    struct tm *tm_info = localtime(&time);
     if (tm_info == NULL)
     {
-        errHandling("Failed to convert time to UTC", 9/*TODO:*/);
+        errHandling("Failed to convert time to UTC", ERR_INTERNAL);
     }
 
     // add year, month, hour and seconds
     if (strftime(rtcTime, RFC3339_TIME_LEN, "%Y-%m-%d %T", tm_info) == 0)
      {
-        errHandling("Failed to format time as RFC3339", 9/*TODO:*/);
+        errHandling("Failed to format time as RFC3339", ERR_INTERNAL);
     }
 
     return rtcTime;

@@ -13,11 +13,13 @@
 // Ethernet frame
 // ----------------------------------------------------------------------------
 
-void frameDissector(const unsigned char* packet, size_t length)
+void frameDissector(const unsigned char* packet, size_t length, int verbose)
 {     
     EthernetHeader* eth;
     eth = (EthernetHeader *) packet;
     
+    if(verbose) {} // DEBUG:
+
     unsigned char protocol;
     switch( uchars2uint16(&(eth->etherType[0])) )
     {
@@ -41,8 +43,13 @@ void frameDissector(const unsigned char* packet, size_t length)
 
             break;
         default:
-            printf("EtherType: (%hhx %hhx)\n", eth->etherType[0], eth->etherType[1]);
-            errHandling("Unknown ether type", 9/*TODO:*/);
+            debugPrint(stdout, "DEBUG: Unknown EtherType: (%hhx %hhx)\n", eth->etherType[0], eth->etherType[1]);
+            #ifdef DEBUG
+                debugPrint(stdout, "Packet:\n");
+                printBytes(packet, length, ' ');
+                debugPrint(stdout, "\n");
+            #endif
+            errHandling("Unknown ether type", ERR_UNKNOWN_PROTOCOL);
             break;
     }
 }
@@ -136,10 +143,7 @@ unsigned printRRQName(const unsigned char* data, const unsigned char* dataWOptr)
         {
             // const unsigned short jumpPtr = ntohs(((unsigned short*)(data))[0]) & 0x3fff;
             const unsigned short jumpPtr = ((data[ptr] << 8) | data[ptr + 1]) & 0x3fff;
-            // debugPrint(stdout, "(");
-            // printBytes(data + ptr, 2, '-');
-            // debugPrint(stdout, ", jumping to byte=%u", (dataWOptr + jumpPtr)[0]);
-            // debugPrint(stdout, ", jumpPtr=%u)", jumpPtr);
+
             return printRRQName(dataWOptr + jumpPtr, dataWOptr) + 2;
         }
 
@@ -172,26 +176,25 @@ int printRRClass(const unsigned char* data)
 {
     switch (ntohs(((unsigned short*)(data))[0]))
         {
-        case RRType_A: printf("A ");
+        case RRType_A:      printf("A ");
             return RRType_A;
             break;
-        case RRType_AAAA:  printf("AAAA ");
+        case RRType_AAAA:   printf("AAAA ");
             return RRType_AAAA;
             break; 
-        case RRType_NS:  printf("NS ");
+        case RRType_NS:     printf("NS ");
             break; 
-        case RRType_MX:  printf("MX ");
+        case RRType_MX:     printf("MX ");
             break; 
-        case RRType_SOA:  printf("SOA ");
+        case RRType_SOA:    printf("SOA ");
             break; 
         case RRType_CNAME:  printf("CNAME ");
             break; 
-        case RRType_SRV:  printf("SRV ");
+        case RRType_SRV:    printf("SRV ");
             break; 
         default:
             break;
         }
-
     return 0;
 }
 

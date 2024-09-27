@@ -1,5 +1,15 @@
 #include "programConfig.h"
 
+#define FREE_BUFFERS \
+    bufferDestroy(config->interface);           \
+    free(config->interface);                    \
+    bufferDestroy(config->domainsfile);         \
+    free(config->domainsfile);                  \
+    bufferDestroy(config->translationsfile);    \
+    free(config->translationsfile);             \
+    bufferDestroy(config->addressToPrint);      \
+    free(config->addressToPrint);               \
+
 /**
  * @brief Sets default values to ProgramConfiguration(Config)
  * 
@@ -8,6 +18,8 @@
 void setupConfig(Config* config)
 {
     config->numberOfPackets = 1;
+    config->captureMode = NO_MODE;
+    config->verbose = 0;
     // ------------------------------------------------------------------------
     config->interface = malloc(sizeof(Buffer));
     if(config->interface == NULL)
@@ -16,19 +28,10 @@ void setupConfig(Config* config)
         errHandling("Failed to allocate memory for config->interface", ERR_MALLOC);
         return;
     }
-    config->pcapfile = malloc(sizeof(Buffer));
-    if(config->pcapfile == NULL)
-    {
-        free(config->interface);
-        free(config);
-        errHandling("Failed to allocate memory for config->pcapfile", ERR_MALLOC);
-        return;
-    }
     config->domainsfile = malloc(sizeof(Buffer));
     if(config->domainsfile == NULL)
     {
         free(config->interface);
-        free(config->pcapfile);
         free(config);
         errHandling("Failed to allocate memory for config->domainsfile", ERR_MALLOC);
         return;
@@ -37,24 +40,32 @@ void setupConfig(Config* config)
     if(config->translationsfile == NULL)
     {
         free(config->interface);
-        free(config->pcapfile);
         free(config->domainsfile);
         free(config);
         errHandling("Failed to allocate memory for config->portSrc", ERR_MALLOC);
         return;
     }
 
+    config->addressToPrint = malloc(sizeof(Buffer));
+    if(config->addressToPrint == NULL)
+    {
+        free(config->interface);
+        free(config->domainsfile);
+        free(config->translationsfile);
+        free(config);
+        errHandling("Failed to allocate memory for config->portSrc", ERR_MALLOC);
+        return;
+    }
+
     bufferInit(config->interface);
-    bufferInit(config->pcapfile);
     bufferInit(config->domainsfile);
     bufferInit(config->translationsfile);
+    bufferInit(config->addressToPrint);
+
     // ------------------------------------------------------------------------
     config->cleanup.timeptr = (char*)malloc(RFC3339_TIME_LEN);
     if (config->cleanup.timeptr == NULL) {
-        free(config->interface);
-        free(config->pcapfile);
-        free(config->domainsfile);
-        free(config->translationsfile);
+        FREE_BUFFERS;
         free(config);
         errHandling("Failed to allocate memory for config->cleanUp", ERR_MALLOC);
         return;
@@ -62,10 +73,7 @@ void setupConfig(Config* config)
 
     config->cleanup.pcapErrbuff = (char*)malloc(PCAP_ERRBUF_SIZE);
     if (config->cleanup.timeptr == NULL) {
-        free(config->interface);
-        free(config->pcapfile);
-        free(config->domainsfile);
-        free(config->translationsfile);
+        FREE_BUFFERS;
         free(config->cleanup.timeptr);
         free(config);
         errHandling("Failed to allocate memory for config->cleanUp", ERR_MALLOC);
@@ -77,10 +85,7 @@ void setupConfig(Config* config)
 
     config->cleanup.configMutex = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
     if (config->cleanup.configMutex == NULL) {
-        free(config->interface);
-        free(config->pcapfile);
-        free(config->domainsfile);
-        free(config->translationsfile);
+        FREE_BUFFERS;
         free(config->cleanup.timeptr);
         free(config->cleanup.pcapErrbuff);
         free(config);
@@ -98,15 +103,7 @@ void setupConfig(Config* config)
  */
 void destroyConfig(Config* config)
 {
-    bufferDestroy(config->interface);
-    bufferDestroy(config->pcapfile);
-    bufferDestroy(config->domainsfile);
-    bufferDestroy(config->translationsfile);
-
-    free(config->interface);
-    free(config->pcapfile);
-    free(config->domainsfile);
-    free(config->translationsfile);
+    FREE_BUFFERS;
 
     config->interface = NULL;
     config->pcapfile = NULL;

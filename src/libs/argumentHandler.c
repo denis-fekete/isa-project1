@@ -24,6 +24,14 @@ static struct option long_options[] =
     {0, 0, 0, 0}
 };
 
+void copyArgToBuffer(char* optarg, Config* config)
+{
+    size_t optLen = strlen(optarg);
+    bufferResize(config->interface, optLen + 1);
+    stringReplace(config->interface->data, optarg, optLen);
+    config->interface->data[optLen] = '\0';
+    config->interface->used = optLen + 1;
+}
 
 /**
  * @brief Handles program arguments and sets correct 
@@ -36,37 +44,40 @@ static struct option long_options[] =
 void argumentHandler(int argc, char* argv[], Config* config)
 {
     int opt;
-    size_t optLen;
     int options_index;
 
-    int counter = 0; // counter for setting config->useFilter
     // \0 == PORT_OPTIONS, \1 DISPLAY_OPTIONS
-    while((opt = getopt_long(argc, argv, "htui:n:p:r:d:t:", long_options, &options_index)) != -1)
+    while((opt = getopt_long(argc, argv, "vhtui:n:p:r:d:t:", long_options, &options_index)) != -1)
     {
-        counter++;
         switch (opt)
         {
             case 'r':
                 break;
             case 'v':
+                config->verbose = true;
                 break;
             case 'd':
                 break;
             case 't':
                 break;
+            case 'p':
+                if(config->captureMode != NO_MODE)
+                    errHandling("Arguments -i and -p cannot be used together", ERR_BAD_ARGS);
+
+                copyArgToBuffer(optarg, config);
+                config->captureMode = OFFLINE_MODE;
+                break;
             // ----------------------------------------------------------------
             case 'i':
-                optLen = strlen(optarg);
-                bufferResize(config->interface, optLen + 1);
-                stringReplace(config->interface->data, optarg, optLen);
-                config->interface->data[optLen] = '\0';
-                config->interface->used = optLen + 1;
-                counter--; // decrease counter because this doesn't count as no filter
+                if(config->captureMode != NO_MODE)
+                    errHandling("Arguments -i and -p cannot be used together", ERR_BAD_ARGS);
+
+                copyArgToBuffer(optarg, config);
+                config->captureMode = ONLINE_MODE;
                 break;
             case 'h':
                 printCliHelpMenu("dns-monitor"); //TODO:
                 errHandling("", 0);
-                counter--; // decrease counter because this doesn't count as no filter
                 break;
             case 'n':
                 // TODO: add some checking for valid numbers
@@ -74,7 +85,6 @@ void argumentHandler(int argc, char* argv[], Config* config)
                     config->numberOfPackets = atoi(optarg);
                 else
                     errHandling("TODO:", 1);
-                counter--; // decrease counter because this doesn't count as no filter
                 break;
             default:
                 errHandling("Unknown option. Use -h for help", ERR_UNKNOWN_ARG);
@@ -83,7 +93,7 @@ void argumentHandler(int argc, char* argv[], Config* config)
     }
 
     // Check mandatory arguments
-    if(config->interface->data == NULL)
+    if(config->interface->data == NULL && config->captureMode != OFFLINE_MODE)
     {
         errHandling("Interface not provided", ERR_BAD_ARGS);
     }

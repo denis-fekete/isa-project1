@@ -57,18 +57,13 @@ void* threadFunction(void* vargp)
         LOCK_CONFIG;
         
         // --------------------------------------------------------------------
-        if(config->verbose) // verbose/simplified output
-        {
+
+        if(config->verbose)
+            printf("Timestamp: %s\n", getTimestamp(header->ts, config));
+        else
             printf("%s", getTimestamp(header->ts, config));
 
-        }
-        else
-        {
-            printf("Timestamp: %s\n", getTimestamp(header->ts, config));
-            frameDissector(packetData, header->len);
-
-        }
-
+        frameDissector(packetData, header->len, config->verbose);
 
         UNLOCK_AND_CHECK_CONFIG;
         LOCK_CONFIG;

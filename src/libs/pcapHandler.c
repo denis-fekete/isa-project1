@@ -9,11 +9,21 @@
 
 #include "pcapHandler.h"
 
-pcap_t* pcapSetup(Config* config, pcap_if_t** allDevices)
+pcap_t* pcapOfflineSetup(Config* config)
 {
-    pcap_t* handle;
+    FILE* file;
+
+    file = fopen(config->pcapfile->data, "r");
+    if(file == NULL)
+        errHandling("Couldn't open file for reading captured packets", ERR_FILE);
+
+    return pcap_fopen_offline(file, config->cleanup.pcapErrbuff);
+}
+
+pcap_t* pcapOnlineSetup(Config* config, pcap_if_t** allDevices, pcap_if_t** device)
+{
     // Get list of all devices
-    int result = pcap_findalldevs( allDevices, config->cleanup.pcapErrbuff);
+    int result = pcap_findalldevs(allDevices, config->cleanup.pcapErrbuff);
     
     // Check for errors
     if(result == PCAP_ERROR)
@@ -29,14 +39,14 @@ pcap_t* pcapSetup(Config* config, pcap_if_t** allDevices)
     }
     
     // Looking for correct device
-    pcap_if_t* device = *allDevices;
+    *device = *allDevices;
 
     // find correct device from list, based on its name, jump out of while if found match
-    while(strcmp(device->name, config->interface->data) != 0)
+    while(strcmp((*device)->name, config->interface->data) != 0)
     {
-        if(device->next != NULL)
+        if((*device)->next != NULL)
         {
-            device = device->next;
+            *device = (*device)->next;
         }
         else
         {
@@ -48,8 +58,21 @@ pcap_t* pcapSetup(Config* config, pcap_if_t** allDevices)
         }
     }
 
-    // Open live sniffing of packets
-    handle = pcap_open_live(device->name, BUFSIZ, true, 1000, config->cleanup.pcapErrbuff);
+    return pcap_open_live((*device)->name, BUFSIZ, true, 1000, config->cleanup.pcapErrbuff);
+}
+
+
+
+pcap_t* pcapSetup(Config* config, pcap_if_t** allDevices)
+{
+    pcap_t* handle;
+    pcap_if_t* device = NULL;
+ 
+    if(config->captureMode == OFFLINE_MODE)
+        handle = pcapOfflineSetup(config);
+    else
+        handle = pcapOnlineSetup(config, allDevices, &device);
+
     
     if(handle == NULL)
     {
@@ -64,15 +87,18 @@ pcap_t* pcapSetup(Config* config, pcap_if_t** allDevices)
         errHandling("", ERR_LIBPCAP);
     }
 
-    // Get IPv4 of device and its mask
-    bpf_u_int32 mask; // The netmask of our sniffing device
-    bpf_u_int32 net; // IP address of sniffing device
-    if(pcap_lookupnet(device->name, &net, &mask, config->cleanup.pcapErrbuff))
+    bpf_u_int32 net = 0; // IP address of sniffing device, for offline can be set to zero
+    if(config->captureMode == ONLINE_MODE)
     {
-        net = 0;
-        mask = 0;
-        fprintf(stderr, "ERR: Can't get netmask for device %s\n", device->name);
-        errHandling("", ERR_LIBPCAP);
+        // Get IPv4 of device and its mask
+        bpf_u_int32 mask; // The netmask of our sniffing device
+        if(pcap_lookupnet(device->name, &net, &mask, config->cleanup.pcapErrbuff))
+        {
+            net = 0;
+            mask = 0;
+            fprintf(stderr, "ERR: Can't get netmask for device %s\n", device->name);
+            errHandling("", ERR_LIBPCAP);
+        }
     }
 
     // Creating a filter to only look for certain traffic
