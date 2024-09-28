@@ -29,7 +29,7 @@ typedef struct CleanUp {
     pcap_t* handle;
     pcap_if_t* allDevices;
     char* pcapErrbuff;
-    pthread_mutex_t* configMutex;
+    FILE* pcapFile;
 } CleanUp;
 
 #define NO_MODE 0
@@ -41,7 +41,7 @@ typedef struct ProgramConfiguration
     union
     {
         Buffer* interface;
-        Buffer* pcapfile;
+        Buffer* pcapFileName;
         void* exitOnNull;
     };
 
@@ -54,8 +54,8 @@ typedef struct ProgramConfiguration
     BufferList* domainList;
     BufferList* translationsList;
 
-    Buffer* domainsfile;
-    Buffer* translationsfile;
+    Buffer* domainsFile;
+    Buffer* translationsFile;
     
     CleanUp cleanup;
 } Config;
@@ -72,7 +72,7 @@ typedef struct ProgramConfiguration
 void setupConfig(Config* config);
 
 /**
- * @brief Prints currect configuration to stdout
+ * @brief Prints current configuration to stdout
  * 
  * @param config 
  */

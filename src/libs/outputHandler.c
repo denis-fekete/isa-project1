@@ -68,3 +68,59 @@ void translationNameHandler(Buffer* newEntry, BufferList* list, bool secondPart)
         bufferAppend(list->last->data, newEntry);
     }
 }
+
+
+
+/**
+ * @brief Save domain names and translated ip addresses to the user provided files
+ * 
+ * @param config Pointer to the Config structure holding data with pointers 
+ * to the name files and variables containing captured data
+ */
+void saveToFiles(Config* config)
+{
+    if(config->domainsFile->data != NULL)
+    {
+        FILE* domFile = fopen(config->domainsFile->data, "w");
+        if(domFile == NULL)
+            errHandling("Failed to open file for domain names", ERR_NONEXISTING_FILE);
+
+        Record* elem = config->domainList->first;
+        while(elem != NULL)
+        {
+            if(elem->next != NULL)
+            {
+                bufferAddChar(elem->data, '\n');
+            }
+            bufferAddChar(elem->data, '\0');
+            fprintf(domFile, "%s", elem->data->data);
+
+            elem = elem->next;
+        }
+
+        fclose(domFile);
+    }
+
+
+    if(config->translationsFile->data != NULL)
+    {
+        FILE* tranFile = fopen(config->translationsFile->data, "w");
+        if(tranFile == NULL)
+            errHandling("Failed to open file for translated addresses", ERR_NONEXISTING_FILE);
+
+        Record* elem = config->translationsList->first;
+        while(elem != NULL)
+        {
+            if(elem->next != NULL)
+            {
+                bufferAddChar(elem->data, '\n');
+            }
+            bufferAddChar(elem->data, '\0');
+            fprintf(tranFile, "%s", elem->data->data);
+            
+            elem = elem->next;
+        }
+
+        fclose(tranFile);
+    }
+}

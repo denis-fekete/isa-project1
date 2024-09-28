@@ -55,4 +55,12 @@ void domainNameHandler(Buffer* newEntry, BufferList* list);
  */
 void translationNameHandler(Buffer* newEntry, BufferList* list, bool secondPart);
 
+/**
+ * @brief Save domain names and translated ip addresses to the user provided files
+ * 
+ * @param config Pointer to the Config structure holding data with pointers 
+ * to the name files and variables containing captured data
+ */
+void saveToFiles(Config* config);
+
 #endif /*OUTPUT_HANDLER*/

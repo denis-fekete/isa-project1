@@ -39,8 +39,11 @@ $(OBJ_DIR)/libs/%.o: $(LIB_DIR)/%.c
 
 .PHONY: clean doc
 
+gdb: all
+	gdb --args $(TARGET) $(ARGS)
+
 zip:
 	zip -r xfeket01.zip src/* tests/* README.md Makefile LICENSE CHANGELOG.md docs/*
 
 clean:
-	rm -rf $(OBJ_DIR)/*.o $(OBJ_DIR)/libs/*.o $(TARGET)
+	rm -rf $(BUILD_DIR)/*

@@ -224,7 +224,11 @@ void rrDissector(const unsigned char* packet, Config* config)
     {
         printf("\n[Question Section]\n");
 
-        ptr += printRRName(resourceRecords, packet, addr2Print);      
+        ptr += printRRName(resourceRecords, packet, addr2Print);     
+
+        if(config->domainsFile->data != NULL)
+            domainNameHandler(addr2Print, config->domainList);
+
         bufferPrint(addr2Print, 1);
         bufferClear(addr2Print);
 
@@ -269,18 +273,22 @@ void rrDissector(const unsigned char* packet, Config* config)
             isIp = (isIp)? printRRClass(resourceRecords + ptr) : 0;
             ptr += 8; // apply correct offset after TYPE,CLASS and TTL
             
-            if(config->domainsfile != NULL)
+            if(config->domainsFile->data != NULL)
                 domainNameHandler(addr2Print, config->domainList);
             
-            if(isIp && config->translationsfile != NULL)
+            if(isIp && config->translationsFile->data != NULL)
                 translationNameHandler(addr2Print, config->translationsList, 0);
 
             bufferClear(addr2Print);
 
             ptr += printRRRData(resourceRecords + ptr, isIp, packet, addr2Print);
+
+            if(config->domainsFile->data != NULL && !isIp)
+                domainNameHandler(addr2Print, config->domainList);
+
             bufferPrint(addr2Print, 1);
 
-            if(isIp && config->translationsfile != NULL)
+            if(isIp && config->translationsFile->data != NULL)
                 translationNameHandler(addr2Print, config->translationsList, 1);
 
             bufferClear(addr2Print);

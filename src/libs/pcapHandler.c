@@ -11,13 +11,11 @@
 
 pcap_t* pcapOfflineSetup(Config* config)
 {
-    FILE* file;
-
-    file = fopen(config->pcapfile->data, "r");
-    if(file == NULL)
+    config->cleanup.pcapFile = fopen(config->pcapFileName->data, "r");
+    if(config->cleanup.pcapFile == NULL)
         errHandling("Couldn't open file for reading captured packets", ERR_FILE);
 
-    return pcap_fopen_offline(file, config->cleanup.pcapErrbuff);
+    return pcap_fopen_offline(config->cleanup.pcapFile, config->cleanup.pcapErrbuff);
 }
 
 pcap_t* pcapOnlineSetup(Config* config, pcap_if_t** allDevices, pcap_if_t** device)
@@ -106,6 +104,7 @@ pcap_t* pcapSetup(Config* config, pcap_if_t** allDevices)
     Buffer expr;
     bufferInit(&expr);
     bufferAddString(&expr, "port 53");
+    bufferAddChar(&expr, 0);
 
     struct bpf_program fp; // Stuct that holds compiled filter expression
     if(pcap_compile(handle, &fp, expr.data, 0, net) == PCAP_ERROR)

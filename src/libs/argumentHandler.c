@@ -19,18 +19,18 @@ static struct option long_options[] =
     {"help",                    no_argument,        0, 'h'},
     {"pcapfile",                required_argument,  0, 'r'},
     {"verbose",                 no_argument,        0, 'v'},
-    {"domainsfile",             no_argument,        0, 'd'},
-    {"translationsfile",        no_argument,        0, 't'},
+    {"domainsFile",             no_argument,        0, 'd'},
+    {"translationsFile",        no_argument,        0, 't'},
     {0, 0, 0, 0}
 };
 
-void copyArgToBuffer(char* optarg, Config* config)
+void copyArgToBuffer(char* optarg, Buffer* buffer)
 {
     size_t optLen = strlen(optarg);
-    bufferResize(config->interface, optLen + 1);
-    stringReplace(config->interface->data, optarg, optLen);
-    config->interface->data[optLen] = '\0';
-    config->interface->used = optLen + 1;
+    bufferResize(buffer, optLen + 1);
+    stringReplace(buffer->data, optarg, optLen);
+    buffer->data[optLen] = '\0';
+    buffer->used = optLen + 1;
 }
 
 /**
@@ -47,24 +47,24 @@ void argumentHandler(int argc, char* argv[], Config* config)
     int options_index;
 
     // \0 == PORT_OPTIONS, \1 DISPLAY_OPTIONS
-    while((opt = getopt_long(argc, argv, "vhtui:n:p:r:d:t:", long_options, &options_index)) != -1)
+    while((opt = getopt_long(argc, argv, "vht:i:n:p:r:d:t:", long_options, &options_index)) != -1)
     {
         switch (opt)
         {
-            case 'r':
-                break;
             case 'v':
                 config->verbose = true;
                 break;
             case 'd':
+                copyArgToBuffer(optarg, config->domainsFile);
                 break;
             case 't':
+                copyArgToBuffer(optarg, config->translationsFile);
                 break;
             case 'p':
                 if(config->captureMode != NO_MODE)
                     errHandling("Arguments -i and -p cannot be used together", ERR_BAD_ARGS);
 
-                copyArgToBuffer(optarg, config);
+                copyArgToBuffer(optarg, config->pcapFileName);
                 config->captureMode = OFFLINE_MODE;
                 break;
             // ----------------------------------------------------------------
@@ -72,7 +72,7 @@ void argumentHandler(int argc, char* argv[], Config* config)
                 if(config->captureMode != NO_MODE)
                     errHandling("Arguments -i and -p cannot be used together", ERR_BAD_ARGS);
 
-                copyArgToBuffer(optarg, config);
+                copyArgToBuffer(optarg, config->interface);
                 config->captureMode = ONLINE_MODE;
                 break;
             case 'h':

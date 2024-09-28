@@ -3,18 +3,16 @@
 #define FREE_BUFFERS \
     bufferDestroy(config->interface);           \
     free(config->interface);                    \
-    bufferDestroy(config->domainsfile);         \
-    free(config->domainsfile);                  \
-    bufferDestroy(config->translationsfile);    \
-    free(config->translationsfile);             \
+    bufferDestroy(config->domainsFile);         \
+    free(config->domainsFile);                  \
+    bufferDestroy(config->translationsFile);    \
+    free(config->translationsFile);             \
     bufferDestroy(config->addressToPrint);      \
     free(config->addressToPrint);
 
-#define FREE_LISTS                          \
-    listDestroy(config->domainList);        \
-    listDestroy(config->translationsList);  \
-    free(config->domainList);               \
-    free(config->translationsList);
+#define FREE_LISTS                              \
+    listDestroy(config->domainList);            \
+    listDestroy(config->translationsList);
 
 /**
  * @brief Sets default values to ProgramConfiguration(Config)
@@ -34,19 +32,19 @@ void setupConfig(Config* config)
         errHandling("Failed to allocate memory for config->interface", ERR_MALLOC);
         return;
     }
-    config->domainsfile = malloc(sizeof(Buffer));
-    if(config->domainsfile == NULL)
+    config->domainsFile = malloc(sizeof(Buffer));
+    if(config->domainsFile == NULL)
     {
         free(config->interface);
         free(config);
-        errHandling("Failed to allocate memory for config->domainsfile", ERR_MALLOC);
+        errHandling("Failed to allocate memory for config->domainsFile", ERR_MALLOC);
         return;
     }
-    config->translationsfile = malloc(sizeof(Buffer));
-    if(config->translationsfile == NULL)
+    config->translationsFile = malloc(sizeof(Buffer));
+    if(config->translationsFile == NULL)
     {
         free(config->interface);
-        free(config->domainsfile);
+        free(config->domainsFile);
         free(config);
         errHandling("Failed to allocate memory for config->portSrc", ERR_MALLOC);
         return;
@@ -56,16 +54,16 @@ void setupConfig(Config* config)
     if(config->addressToPrint == NULL)
     {
         free(config->interface);
-        free(config->domainsfile);
-        free(config->translationsfile);
+        free(config->domainsFile);
+        free(config->translationsFile);
         free(config);
         errHandling("Failed to allocate memory for config->portSrc", ERR_MALLOC);
         return;
     }
 
     bufferInit(config->interface);
-    bufferInit(config->domainsfile);
-    bufferInit(config->translationsfile);
+    bufferInit(config->domainsFile);
+    bufferInit(config->translationsFile);
     bufferInit(config->addressToPrint);
 
     config->domainList = (BufferList*) malloc(sizeof(BufferList));
@@ -111,19 +109,7 @@ void setupConfig(Config* config)
 
     config->cleanup.allDevices = NULL;
     config->cleanup.handle = NULL;
-
-    config->cleanup.configMutex = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
-    if (config->cleanup.configMutex == NULL) {
-        FREE_BUFFERS;
-        FREE_LISTS;
-        free(config->cleanup.timeptr);
-        free(config->cleanup.pcapErrbuff);
-        free(config);
-        errHandling("Failed to allocate memory for config->configMutex", ERR_MALLOC);
-        return;
-    }
-
-    pthread_mutex_init(config->cleanup.configMutex, NULL);
+    config->cleanup.pcapFile = NULL;
 }
 
 /**
@@ -133,31 +119,25 @@ void setupConfig(Config* config)
  */
 void destroyConfig(Config* config)
 {
-    // TODO: delete
-    printf("Domain list:\n");
-    listPrintContents(config->domainList);
-    printf("\nTranslations list:\n");
-    listPrintContents(config->translationsList);
-
     // FREE_BUFFERS;
     // FREE_LISTS;
 
-    bufferDestroy(config->interface);           \
-    free(config->interface);                    \
-    bufferDestroy(config->domainsfile);         \
-    free(config->domainsfile);                  \
-    bufferDestroy(config->translationsfile);    \
-    free(config->translationsfile);             \
-    bufferDestroy(config->addressToPrint);      \
+    bufferDestroy(config->interface);
+    free(config->interface);
+    bufferDestroy(config->domainsFile);
+    free(config->domainsFile);
+    bufferDestroy(config->translationsFile);
+    free(config->translationsFile);
+    bufferDestroy(config->addressToPrint);
     free(config->addressToPrint);
 
     listDestroy(config->domainList);
     listDestroy(config->translationsList);
 
     config->interface = NULL;
-    config->pcapfile = NULL;
-    config->domainsfile = NULL;
-    config->translationsfile = NULL;
+    config->pcapFileName = NULL;
+    config->domainsFile = NULL;
+    config->translationsFile = NULL;
 
     free(config->cleanup.timeptr);
     config->cleanup.timeptr = NULL;
@@ -169,13 +149,9 @@ void destroyConfig(Config* config)
     pcap_close(config->cleanup.handle);
     pcap_freealldevs(config->cleanup.allDevices);
 
-    pthread_mutex_destroy(config->cleanup.configMutex);
-    free(config->cleanup.configMutex);
     free(config);
 }
 
-
-#define BOOL_TO_STR(boolVal) (boolVal)? "true" : "false"
 /**
  * @brief Prints current configuration to stdout
  * 
@@ -185,8 +161,8 @@ void printConfig(Config* config)
 {
     printf("Config options:\n");
     printf("\tInterface: %s\n", config->interface->data);
-    printf("\tPCAP filename: %s\n", config->pcapfile->data);
-    printf("\tDomains filename: %s\n", config->domainsfile->data);
-    printf("\tTranslations filename: %s\n", config->translationsfile->data);
+    printf("\tPCAP filename: %s\n", config->pcapFileName->data);
+    printf("\tDomains filename: %s\n", config->domainsFile->data);
+    printf("\tTranslations filename: %s\n", config->translationsFile->data);
     printf("\tNO Packets: %u\n", config->numberOfPackets);
 }

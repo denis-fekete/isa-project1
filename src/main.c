@@ -23,18 +23,6 @@
 Config* globalConfig;
 bool sigintTriggered;
 
-#define LOCK_CONFIG                 \
-    pthread_mutex_lock(config->cleanup.configMutex);    \
-    if(config->numberOfPackets == 0)  \
-    {                               \
-        pthread_mutex_unlock(config->cleanup.configMutex);\
-        break;                      \
-    }                               \
-
-#define UNLOCK_AND_CHECK_CONFIG     \
-    pthread_mutex_unlock(config->cleanup.configMutex);
-    
-
 void* threadFunction(void* vargp)
 {
     Config* config = (Config*)vargp;
@@ -47,16 +35,11 @@ void* threadFunction(void* vargp)
 
     while(packetCounter < config->numberOfPackets)
     {
-        LOCK_CONFIG;
         // short unsigned int tabsCorrected = 0;
         int res =  pcap_next_ex(config->cleanup.handle, &header, &packetData);
         if(!res ) { errHandling("Capturing packet failed!", 99); }
 
         // Lock mutex to prevent segmentation fault if someone tried to destroy it
-        UNLOCK_AND_CHECK_CONFIG;
-        LOCK_CONFIG;
-        
-        // --------------------------------------------------------------------
 
         if(config->verbose)
             printf("Timestamp: %s\n", getTimestamp(header->ts, config));
@@ -65,15 +48,8 @@ void* threadFunction(void* vargp)
 
         frameDissector(packetData, header->len, config);
 
-        UNLOCK_AND_CHECK_CONFIG;
-        LOCK_CONFIG;
-        
-        // --------------------------------------------------------------------
-
         packetCounter++;
         printf("\n");
-
-        UNLOCK_AND_CHECK_CONFIG;
     }
 
     return NULL;
@@ -89,15 +65,6 @@ void sigintHandler(int num)
     // set number of packets to capture to 0
     globalConfig->numberOfPackets = 0;
 
-    // unlock for main to check that it should cease function
-    // pthread_mutex_unlock(globalConfig->cleanup.configMutex);
-    
-    // lock again and wait for main to stop
-    pthread_mutex_lock(globalConfig->cleanup.configMutex);
-    pthread_mutex_unlock(globalConfig->cleanup.configMutex);
-
-    // destroy mutex and global config
-    pthread_mutex_destroy(globalConfig->cleanup.configMutex);
     destroyConfig(globalConfig);
     globalConfig = NULL;
 }
@@ -129,6 +96,9 @@ int main(int argc, char* argv[])
     pthread_t thread;
     pthread_create(&thread, NULL, threadFunction, config);
     pthread_join(thread, NULL);
+
+    
+    saveToFiles(config);
 
     // Close and cleanup
     if(!sigintTriggered)

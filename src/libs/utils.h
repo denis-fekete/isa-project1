@@ -39,7 +39,8 @@ typedef enum ErrorCodes
     ERR_UNKNOWN_ARG,
     ERR_BAD_ARGS,
     ERR_FILE,
-    ERR_UNKNOWN_PROTOCOL
+    ERR_UNKNOWN_PROTOCOL,
+    ERR_NONEXISTING_FILE
 } errCodes_t;
 
 // ----------------------------------------------------------------------------
@@ -56,17 +57,17 @@ typedef enum ErrorCodes
 void errHandling(const char* errMessage, int errorCode);
 
 /**
- * @brief Replaces bytes in dst with bytes from src up to len lenght
+ * @brief Replaces bytes in dst with bytes from src up to len length
  * 
- * @param dst Destinatin byte array
- * @param src Source byte arry
+ * @param dst Destination byte array
+ * @param src Source byte array
  * @param len Number of bytes to replace
  */
 void stringReplace(char* dst, char* src, size_t len);
 
 /**
- * @brief Checks if string conteins only valid characters that can be in 
- * usigned integer (no : '+', '-', '.', ',')
+ * @brief Checks if string contains only valid characters that can be in 
+ * unsigned integer (no : '+', '-', '.', ',')
  * 
  * @param string Pointer to the string
  * @return true If string can be converted to valid number
