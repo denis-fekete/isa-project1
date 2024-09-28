@@ -40,13 +40,13 @@ typedef struct Buffer
  * 
  * @warning Do not use on buffer that already has allocated memory
  * 
- * @param buffer Buffer to be reseted
+ * @param buffer Buffer to be initiated
  */
 void bufferInit(Buffer* buffer);
 
 /**
  * @brief Resizes buffer to new size, if buffer is not
- * iniatilized (NULL) default value (INITIAL_BUFFER_SIZE) will
+ * initialized (NULL) default value (INITIAL_BUFFER_SIZE) will
  * be used instead to prevent allocation of small buffers
  * 
  * @param buffer Buffer to be resized
@@ -68,7 +68,7 @@ void bufferCopy(Buffer* dst, Buffer* src);
  * Fills buffer character by character until EOF is found.
  * If buffer is running out of space, it will be resized
  * 
- * @param buffer Pointer to the buffer. Can be inputed as NULL, however correct buffer size
+ * @param buffer Pointer to the buffer. Can be inputted as NULL, however correct buffer size
  * is required
  * @param bufferSize Pointer size of provided buffer
  */
@@ -78,11 +78,10 @@ size_t loadBufferFromStdin(Buffer* buffer, bool* eofDetected);
  * @brief Prints buffer characters byte by byte from start to used
  * 
  * @param buffer Input buffer
- * @param hex If not 0 (false) prints hex values with white spaces between
- * @param smartfilter If not 0 (false) only alphanumeric chacters will be prited
- * as chracaters and other chars will be printed as hex codes
+ * @param printHex prints characters that are non printable in () if set to true
+ * as characters and other chars will be printed as hex codes
  */
-void bufferPrint(Buffer* buffer, int useDebugPrint);
+void bufferPrint(Buffer* buffer, bool printHex);
 
 /**
  * @brief Destroys Buffer and frees memory
@@ -101,4 +100,48 @@ void bufferDestroy(Buffer* buffer);
  */
 void bufferAddString(Buffer* buffer, char* string);
 
-#endif
+/**
+ * @brief Adds character to the end of buffer
+ * 
+ * @warning String must be ended with "\0"
+ * 
+ * @param buffer pointer to initialized buffer 
+ * @param ch character that will be added 
+ */
+void bufferAddChar(Buffer* buffer, char ch);
+
+/**
+ * @brief Sets buffer used size to 0 and sets first byte to '\0'
+ * 
+ * @param buffer pointer to Buffer to be cleared
+ */
+void bufferClear(Buffer* buffer);
+
+/**
+ * @brief Compares contents of two buffers until first '\0' is found or until 
+ * used limit was reached. Returns TRUE if buffer data are same
+ * 
+ * @param first First buffer
+ * @param second Second buffer
+ * @return true Buffer data until first '\0' are same
+ * @return false Buffer data until first '\0' are not same
+ */
+bool bufferCompare(Buffer* first, Buffer* second);
+
+/**
+ * @brief Appends src Buffer at the end of the dst Buffer 
+ * 
+ * @param dst Pointer to the destination Buffer
+ * @param src Pointer to the source Buffer
+ */
+void bufferAppend(Buffer* dst, Buffer* src);
+
+/**
+ * @brief Sets new value to buffer parameter used
+ * 
+ * @param buffer Pointer to the buffer
+ * @param used New value of used parameter
+ */
+void bufferSetUsed(Buffer* buffer, size_t used);
+
+#endif /*BUFFER_H*/

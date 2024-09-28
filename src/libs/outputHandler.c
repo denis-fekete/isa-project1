@@ -30,164 +30,41 @@ char* getTimestamp(struct timeval tv, Config* config)
 
     return rtcTime;
 }
+
 #undef TIMEZONE_LEN
 
-#define BYTES_PER_LINE 16
 /**
- * @brief Print hexdump-like to standard output
+ * @brief Checks is domain name exists in list of domain names, if not adds 
+ * it to the list 
  * 
- * @param maxLen length of the array
- * @param packetData pointer to array of bytes
+ * @param newEntry Possible new entry to the list 
+ * @param list Pointer to the list
  */
-void printHexDump(size_t maxLen, const unsigned char* packetData)
+void domainNameHandler(Buffer* newEntry, BufferList* list)
 {
-    long long int bytesToPrint = 0;
-    short unsigned int tabs = 0;
-    for(size_t i = 0; i < maxLen; i += BYTES_PER_LINE)
+    if(listSearch(list, newEntry) == false)
     {
-        // check if bytes to be printed on line is smaller number than header.len - i
-        if(BYTES_PER_LINE < ((long long unsigned ) maxLen) - i)
-        {
-            // if yes print BYTES_PER_LINE
-            bytesToPrint = BYTES_PER_LINE;
-        }   
-        // if no calculate how many bytes needs to printed and correct tabulators
-        else 
-        {
-            bytesToPrint = maxLen - i; 
-            tabs = (BYTES_PER_LINE * 2 + BYTES_PER_LINE) - ( bytesToPrint * 2 + bytesToPrint);
-        }
-
-        // print line number in hex
-        printf("\t0x%04zx: ", i);
-        // print hexadecimal values
-        printBytes( packetData + i, bytesToPrint, ' ');
-        // separate
-        printf(" ");
-        // correct tabulation if last row is not full
-        for(short unsigned int k = 0; k < tabs; k++)
-        {
-            printf(" ");
-        }
-        // print as printable characters
-        printChars( packetData + i, bytesToPrint);
-        printf("\n");
+        listAddRecord(list, newEntry);
     }
 }
-#undef BYTES_PER_LINE
 
 /**
- * @brief Print hexdump-like to standard output
+ * @brief Saves ipaddress and domain translation into a list
  * 
- * @param maxLen length of the array
- * @param packetData pointer to array of bytes
- * @param frameS FrameSelections structure holding length of headers
+ * @param newEntry Possible new entry to the list
+ * @param list Pointer to the list
+ * @param secondPart On false (if first part) will create a new entry, on 
+ * true (second part) will add IP address to it
  */
-void printCharsAtEnd(size_t* actualVPos, size_t bytesPrinted, size_t vPos, size_t skipped, const unsigned char* packetData)
+void translationNameHandler(Buffer* newEntry, BufferList* list, bool secondPart)
 {
-    const unsigned short VPOS_B_SIZE = sizeof("ff ") - 1;
-    const unsigned short BYTES_PER_LINE = 16;
-    const unsigned short CHAR_VPOS = BYTES_PER_LINE * VPOS_B_SIZE;
-    const unsigned short CHAR_INDENT_VPOS = CHAR_VPOS + 7;
-
-    // fix indentation
-    for(; *actualVPos < CHAR_VPOS + skipped; (*actualVPos)++) { printf(" "); }
-    
-    const unsigned char* byte = packetData + bytesPrinted - vPos / VPOS_B_SIZE + skipped;
-    // print bytes in as characters if printable
-    for(size_t i = 0; i < vPos / VPOS_B_SIZE - skipped; i++)
+    if(!secondPart)
     {
-        if(byte[i] >= 0x20 && byte[i] <= 0x7e)
-            printf("%c", (unsigned char) byte[i]);
-        else
-            printf(".");
-        // add one extra in the middle
-        if(*actualVPos == CHAR_INDENT_VPOS)
-            printf(" ");
-
-        (*actualVPos)++;
+        listAddRecord(list, newEntry);
     }
-    printf("\n");
-}
-
-/**
- * @brief Helping function for printing characters at end of line 
- * (after hexdump) with correct indentation
- * 
- * @param actualVPos actual vertical position
- * @param bytesPrinted how many bytes are going to be printed on this line
- * @param vPos vertical postion
- * @param skipped how many bytes were skipped do to indentation
- * @param packetData array of data
- */
-void printBetterHexDump(size_t maxLen, const unsigned char* packetData, FrameSections frameS)
-{
-    size_t bytesPrinted = 0; 
-    size_t vPos = 0;
-    size_t actualVPos = 0;
-    size_t hPos = 0;
-    size_t skipped = 0; 
-
-    const unsigned short VPOS_B_SIZE = sizeof("ff ") - 1;
-    const unsigned short BYTES_PER_LINE = 16;
-
-    for(; bytesPrinted < maxLen; bytesPrinted++)
+    else if(secondPart)
     {
-        unsigned char byte = *(packetData + bytesPrinted);
-
-        if(bytesPrinted == 0)
-        {
-            printf("Data layer:\n");
-            printf("\t0x%04zx: ", hPos);
-            
-            actualVPos = 0;
-        }
-        else if(bytesPrinted == frameS.dataLen)
-        {
-            // fix indentation at end of line
-            printCharsAtEnd(&actualVPos, bytesPrinted, vPos, skipped, packetData);
-
-            printf("Network layer:\n");
-            printf("\t0x%04zx: ", hPos);
-            actualVPos = 0;
-        }
-        else if(bytesPrinted == frameS.networkLen)
-        {
-            // fix indentation at end of line
-            printCharsAtEnd(&actualVPos, bytesPrinted, vPos, skipped, packetData);
-
-            printf("Transport layer:\n");
-            printf("\t0x%04zx: ", hPos);
-            actualVPos = 0;
-        }
-
-        // fix indentation if layer segment was changed
-        for(; actualVPos < vPos; actualVPos++)
-        {
-            printf(" ");
-            skipped++; // count skipped characters
-        }
-
-        // vertical position is over allowed bytes per line add new line
-        if(vPos >= BYTES_PER_LINE * VPOS_B_SIZE)
-        {
-            skipped = skipped / VPOS_B_SIZE;
-            // fix indentation at end of line
-            printCharsAtEnd(&actualVPos, bytesPrinted, vPos, skipped, packetData);
-
-            hPos++;
-            printf("\t0x%04zx: ", hPos);
-            vPos = 0;
-            actualVPos = 0;
-            skipped = 0;
-        }
-
-        // print byte and separator
-        printf("%02hhx ", byte);
-
-        vPos+= VPOS_B_SIZE;
-        actualVPos += VPOS_B_SIZE;
+        bufferAddChar(list->last->data, ' ');
+        bufferAppend(list->last->data, newEntry);
     }
-
-    printCharsAtEnd(&actualVPos, bytesPrinted, vPos, skipped, packetData);
 }

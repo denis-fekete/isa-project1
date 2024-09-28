@@ -13,13 +13,11 @@
 // Ethernet frame
 // ----------------------------------------------------------------------------
 
-void frameDissector(const unsigned char* packet, size_t length, int verbose)
+void frameDissector(const unsigned char* packet, size_t length, Config* config)
 {     
     EthernetHeader* eth;
     eth = (EthernetHeader *) packet;
     
-    if(verbose) {} // DEBUG:
-
     unsigned char protocol;
     switch( uchars2uint16(&(eth->etherType[0])) )
     {
@@ -32,7 +30,7 @@ void frameDissector(const unsigned char* packet, size_t length, int verbose)
                     );
             
             dnsDissector(packet + sizeof(EthernetHeader) + sizeof(struct iphdr) + sizeof(struct udphdr));
-            rrDissector(packet + sizeof(EthernetHeader) + sizeof(struct iphdr) + sizeof(struct udphdr));
+            rrDissector(packet + sizeof(EthernetHeader) + sizeof(struct iphdr) + sizeof(struct udphdr), config);
             break;
         case ETH_TYPE_IPV6:
             protocol = ipv6Dissector(packet + sizeof(EthernetHeader));
@@ -75,35 +73,14 @@ unsigned char ipv4Dissector(const unsigned char* packet)
     struct iphdr* ipv4 = (struct iphdr*) packet;
 
     printf("SrcIP: ");
-    printIPv4(ipv4->saddr);
+    printIPv4(ipv4->saddr, NULL);
+    printf("\n");
 
     printf("DstIP: ");
-    printIPv4(ipv4->daddr);
+    printIPv4(ipv4->daddr, NULL);
+    printf("\n");
 
     return ipv4->protocol;
-}
-
-void print_bits(unsigned short num) {
-    // Loop through each bit from 15 down to 0
-    for (int i = 15; i >= 0; i--) {
-        if(i == 3 || i == 7 || i == 11)
-        {
-            printf(" ");
-        }
-
-        // Use bitwise AND to check if the bit at position i is set
-        if (num & (1 << i))
-        {
-            printf("1"); // Print '1' if the bit is set
-        }
-        else
-        {
-            printf("0"); // Print '0' if the bit is not set
-        }
-
-
-    }
-    putchar('\n'); // Print a newline at the end
 }
 
 void dnsDissector(const unsigned char* packet)
@@ -111,9 +88,9 @@ void dnsDissector(const unsigned char* packet)
     DNSHeader* dns = (struct DNSHeader*) packet;
     unsigned short correctedFlags = ntohs(dns->flags);
 
-    //print_bits(correctedFlags); // DEBUG:
-
-    printf("Identifier: 0x%hhX%hhX\n", (ntohs(dns->transactionID) >> 8), ntohs(dns->transactionID));
+    printf("Identifier: 0x%hhX%hhX\n", 
+        ((unsigned char) (ntohs(dns->transactionID) >> 8)),
+        ((unsigned char) ntohs(dns->transactionID)));
     printf("Flags:");
     printf("QR=%c, ",        (correctedFlags & QR)? '1' : '0');
     printf("OPCODE=%u, ",    (correctedFlags & OPCODE) >> 11);
@@ -123,53 +100,52 @@ void dnsDissector(const unsigned char* packet)
     printf("RA=%c, ",        (correctedFlags & RA)? '1' : '0');
     printf("Z=%u, ",         (correctedFlags & _Z) >> 4);
     printf("RCODE=%u\n",     correctedFlags & RCODE);
-
-    
 }
 
-unsigned printRRQName(const unsigned char* data, const unsigned char* dataWOptr)
+
+typedef struct 
+{
+    unsigned value;
+    char jumped; 
+} nameReturnType;
+
+unsigned printRRName(const unsigned char* data, const unsigned char* dataWOptr, Buffer* addr2Print)
 {
     unsigned ptr = 0;
     for(;1;)
     {
-
         const unsigned char lengthOctet = (data)[ptr];
         if(lengthOctet == 0)
         {
+            bufferSetUsed(addr2Print, addr2Print->used - 1);
             ptr++;
             return ptr;
         }
         else if((lengthOctet >> 6) & 0x3)
         {
-            // const unsigned short jumpPtr = ntohs(((unsigned short*)(data))[0]) & 0x3fff;
             const unsigned short jumpPtr = ((data[ptr] << 8) | data[ptr + 1]) & 0x3fff;
+            
+            printRRName(dataWOptr + jumpPtr, dataWOptr, addr2Print);
 
-            return printRRQName(dataWOptr + jumpPtr, dataWOptr) + 2;
+            // return ptr + 2 for the jump pointer
+            return ptr + 2;
         }
 
-        ptr++; // increase pointer to current byte
+        ptr++; // increase pointer to go from length octet to data
 
         for(unsigned char i = 0; i < lengthOctet; i++, ptr++)
         {
-            printf("%c", (data)[ptr]);
+            bufferAddChar(addr2Print, (data)[ptr]);
         }
-        printf(".");
+        bufferAddChar(addr2Print, '.');
     }
-
+    
     return 0;
-}
-
-void printRRName(const unsigned char* data, const unsigned char* dataWOptr)
-{
-    unsigned short dataPtr = ntohs(((unsigned short*)(data))[0]);
-    dataPtr = dataPtr & 0x3fff;
-
-    printRRQName(dataWOptr + dataPtr, dataWOptr);
 }
 
 void printRRTTL(const unsigned char* data)
 {
-    printf(" %u", ntohs(((unsigned short*)(data))[0]));
+    printf(" %lu", (unsigned long)ntohl(((unsigned long*)(data))[0]));
 }
 
 int printRRClass(const unsigned char* data)
@@ -212,37 +188,33 @@ int printRRType(const unsigned char* data)
     return 0;
 }
 
-int printRRRData(const unsigned char* data, unsigned isIp, const unsigned char* dataWOptr)
+int printRRRData(const unsigned char* data, unsigned isIp, const unsigned char* dataWOptr, Buffer* addr2Print)
 {
     unsigned short dataLen = ntohs(((unsigned short*)(data))[0]);
 
     if(isIp)
     {
        if(isIp == RRType_A)
-        {
-            printIPv4(((uint32_t*) (data + 2))[0]);
-        }
+            printIPv4(((uint32_t*) (data + 2))[0], addr2Print);
         else
-        {
-            printIPv6((uint32_t*) (data + 2));
-        }
+            printIPv6((uint32_t*) (data + 2), addr2Print);
     }
     else
-    {
-        printRRQName(data + 2, dataWOptr);
-    }
+        printRRName(data + 2, dataWOptr, addr2Print);
 
-    // return i + 2; // +2 is for the two bytes of dataLen 
     return dataLen + 2; // +2 is for the two bytes of dataLen 
 }
 
-#define TYPE_offset 2
-#define CLASS_offset TYPE_offset + 2
-#define TTL_offset CLASS_offset + 2
-#define RDLENGTH_offset TTL_offset + 4
-
-void rrDissector(const unsigned char* packet)
+/**
+ * @brief Dissects DNS packet into parts and prints relevant information
+ * 
+ * @param packet Packet to be dissected, must be at a start of DNS part of the packet
+ * @param config Pointer to configuration structure that holds information about what should be displayed
+ */
+void rrDissector(const unsigned char* packet, Config* config)
 {
+    Buffer* addr2Print = config->addressToPrint;
+
     DNSHeader* dns = (struct DNSHeader*) packet;
     const unsigned char* resourceRecords = packet + sizeof(struct DNSHeader);
     
@@ -252,7 +224,10 @@ void rrDissector(const unsigned char* packet)
     {
         printf("\n[Question Section]\n");
 
-        ptr += printRRQName(resourceRecords, packet);        
+        ptr += printRRName(resourceRecords, packet, addr2Print);      
+        bufferPrint(addr2Print, 1);
+        bufferClear(addr2Print);
+
         printRRType(resourceRecords + ptr);
         ptr += 2;
         printRRClass(resourceRecords + ptr);
@@ -282,20 +257,35 @@ void rrDissector(const unsigned char* packet)
                 case 2: printf("\n[Additional Section]\n"); break;
             }
         }
-
         for(unsigned i = 0; i < repeat; i++)
         {
-            printRRName(resourceRecords+ptr, packet);
-            ptr += 2;
-            printRRTTL(resourceRecords + ptr + 6);
+            ptr += printRRName(resourceRecords+ptr, packet, addr2Print);
+            bufferPrint(addr2Print, 1); 
+
+            printRRTTL(resourceRecords + ptr + 4);
+
             unsigned isIp = printRRType(resourceRecords + ptr + 2);
+
             isIp = (isIp)? printRRClass(resourceRecords + ptr) : 0;
             ptr += 8; // apply correct offset after TYPE,CLASS and TTL
-            const unsigned a = printRRRData(resourceRecords + ptr, isIp, packet);
-            ptr += a;
+            
+            if(config->domainsfile != NULL)
+                domainNameHandler(addr2Print, config->domainList);
+            
+            if(isIp && config->translationsfile != NULL)
+                translationNameHandler(addr2Print, config->translationsList, 0);
+
+            bufferClear(addr2Print);
+
+            ptr += printRRRData(resourceRecords + ptr, isIp, packet, addr2Print);
+            bufferPrint(addr2Print, 1);
+
+            if(isIp && config->translationsfile != NULL)
+                translationNameHandler(addr2Print, config->translationsList, 1);
+
+            bufferClear(addr2Print);
             printf("\n");
         }
-        printf("\n");
     }
 
 }
@@ -327,20 +317,69 @@ void ipv4ProtocolDissector(unsigned char protocol, const unsigned char* packet, 
  * @brief Prints IPv4 address in correct endian
  * 
  * @param address IPv4 address
+ * @param addr2Print buffer to which will the IPv4 address stored, if NULL 
+ * address will be printed onto stdout
  */
-void printIPv4(u_int32_t address)
+void printIPv4(u_int32_t address, Buffer* addr2Print)
 {
     u_int32_t addressCorrected = ntohl(address);
-    
+
+
+    if(addr2Print == NULL)
+    {
+        for(short i = 24 ; i >= 0 ; i -= 8)
+        {
+            printf("%hu", ((unsigned short)((addressCorrected >> i) & 0xFF)));
+
+            if(i != 0)
+            {
+                printf(".");
+            }
+        }
+
+        return;
+    }
+
+    unsigned char number = 0;
+    short unsigned int hundreds = 0;
+    short unsigned int tens = 0;
+    short unsigned int ones = 0;
+
+    char tmp[4] = {0};
     for(short i = 24 ; i >= 0 ; i -= 8)
     {
-        printf("%hu", (addressCorrected >> i) & 0xFF);
+        
+        number = (addressCorrected >> i) & 0xFF;
+        hundreds = (int) number/100;
+        tens = (int) (number%100) / 10;
+        ones = (int) ((number%100) % 10);
+
+        number = 0; // reuse number for digit counting
+        if(hundreds > 0)
+        {
+            tmp[number] = '0' + hundreds;
+            number++;
+        }
+
+        if(tens > 0 || number > 0)
+        {
+            tmp[number] = '0' + tens;
+            number++;
+        }
             
+        tmp[number] = '0' + ones;
+        number++;
+        
+        tmp[number] = 0;
+
+        bufferAddString(addr2Print, tmp);
+
         if(i != 0)
         {
-            printf(".");
+            bufferAddChar(addr2Print, '.');
         }
     }
+
 }
 
 // ----------------------------------------------------------------------------
@@ -358,11 +397,10 @@ unsigned char ipv6Dissector(const unsigned char* packet)
     struct ip6_hdr* ipv6 = (struct ip6_hdr*) packet;
 
     printf("SrcIP: ");
-    printIPv6(ipv6->ip6_src.__in6_u.__u6_addr32);
+    printIPv6(ipv6->ip6_src.__in6_u.__u6_addr32, NULL);
 
     printf("DstIP: ");
-    printIPv6(ipv6->ip6_dst.__in6_u.__u6_addr32);
-
+    printIPv6(ipv6->ip6_dst.__in6_u.__u6_addr32, NULL);
     
     return (unsigned char) packet[sizeof(struct ip6_hdr)];
 }
@@ -394,10 +432,17 @@ void ipv6ProtocolDissector(unsigned char protocol, const unsigned char* packet, 
  * 
  * @param address pointer to u_int32_t[4]   
  */
-void printIPv6(u_int32_t* address)
+void printIPv6(u_int32_t* address, Buffer* addr2Print)
 {
     char buffer[40];
     inet_ntop(AF_INET6, address, buffer, 40);
     
-    printf("%s", buffer);
+    if(addr2Print == NULL)
+    {
+        printf("%s", buffer);
+    }
+    else
+    {
+        bufferAddString(addr2Print, buffer);
+    }
 }

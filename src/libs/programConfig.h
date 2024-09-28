@@ -15,6 +15,7 @@
 
 #include "utils.h"
 #include "buffer.h"
+#include "list.h"
 
 #include "pthread.h"
 
@@ -49,6 +50,10 @@ typedef struct ProgramConfiguration
     bool verbose;
 
     Buffer* addressToPrint;
+
+    BufferList* domainList;
+    BufferList* translationsList;
+
     Buffer* domainsfile;
     Buffer* translationsfile;
     

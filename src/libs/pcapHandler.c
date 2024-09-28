@@ -107,9 +107,6 @@ pcap_t* pcapSetup(Config* config, pcap_if_t** allDevices)
     bufferInit(&expr);
     bufferAddString(&expr, "port 53");
 
-    debugPrint(stdout, "DEBUG: Final expression of filter: ");
-    bufferPrint(&expr, 1);
-
     struct bpf_program fp; // Stuct that holds compiled filter expression
     if(pcap_compile(handle, &fp, expr.data, 0, net) == PCAP_ERROR)
     {

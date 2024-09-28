@@ -23,6 +23,10 @@
 #include "netinet/icmp6.h"
 #include "arpa/inet.h"
 
+#include "buffer.h"
+#include "programConfig.h"
+#include "outputHandler.h"
+
 // ----------------------------------------------------------------------------
 //  Structures and enums
 // ----------------------------------------------------------------------------
@@ -97,7 +101,7 @@ u_int16_t uchars2uint16(unsigned char* value);
 // Ethernet frame
 // ----------------------------------------------------------------------------
 
-void frameDissector(const unsigned char* packet, size_t length, int verbose);
+void frameDissector(const unsigned char* packet, size_t length, Config* config);
 
 // ----------------------------------------------------------------------------
 // Internet Protocol version 4
@@ -125,7 +129,7 @@ void ipv4ProtocolDissector(unsigned char protocol, const unsigned char* packet, 
  * 
  * @param address IPv4 address
  */
-void printIPv4(u_int32_t address);
+void printIPv4(u_int32_t address, Buffer* addr2Print);
 
 /**
  * @brief Prints DNS information
@@ -135,11 +139,12 @@ void printIPv4(u_int32_t address);
 void dnsDissector(const unsigned char* packet);
 
 /**
- * @brief Prints Resource Record of the DNS information
+ * @brief Dissects DNS packet into parts and prints relevant information
  * 
- * @param packet byte array with data from packet
+ * @param packet Packet to be dissected, must be at a start of DNS part of the packet
+ * @param config Pointer to configuration structure that holds information about what should be displayed
  */
-void rrDissector(const unsigned char* packet);
+void rrDissector(const unsigned char* packet, Config* config);
 
 
 // ----------------------------------------------------------------------------
@@ -168,7 +173,7 @@ void ipv6ProtocolDissector(unsigned char protocol, const unsigned char* packet, 
  * 
  * @param address pointer to u_int32_t[4]   
  */
-void printIPv6(u_int32_t* address);
+void printIPv6(u_int32_t* address, Buffer* addr2Print);
 
 // ----------------------------------------------------------------------------
 // Address Resolution Protocol

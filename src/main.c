@@ -63,7 +63,7 @@ void* threadFunction(void* vargp)
         else
             printf("%s", getTimestamp(header->ts, config));
 
-        frameDissector(packetData, header->len, config->verbose);
+        frameDissector(packetData, header->len, config);
 
         UNLOCK_AND_CHECK_CONFIG;
         LOCK_CONFIG;

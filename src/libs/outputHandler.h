@@ -16,9 +16,8 @@
 
 #include "utils.h"
 #include "buffer.h"
-#include "pcapHandler.h"
+#include "list.h"
 #include "programConfig.h"
-#include "packetDissector.h"
 
 // ----------------------------------------------------------------------------
 //  Structures and enums
@@ -27,7 +26,6 @@
 // ----------------------------------------------------------------------------
 //  Functions
 // ----------------------------------------------------------------------------
-
 
 /**
  * @brief Returns array of characters with correct timestamp in RFC 3339 format
@@ -39,31 +37,22 @@
 char* getTimestamp(struct timeval tv, Config* config);
 
 /**
- * @brief Print hexdump-like to standard output
+ * @brief Checks is domain name exists in list of domain names, if not adds 
+ * it to the list 
  * 
- * @param maxLen length of the array
- * @param packetData pointer to array of bytes
+ * @param newEntry Possible new entry to the list 
+ * @param list Pointer to the list
  */
-void printHexDump(size_t maxLen, const unsigned char* packetData);
+void domainNameHandler(Buffer* newEntry, BufferList* list);
 
 /**
- * @brief Print hexdump-like to standard output
+ * @brief Saves ipaddress and domain translation into a list
  * 
- * @param maxLen length of the array
- * @param packetData pointer to array of bytes
- * @param frameS FrameSelections structure holding length of headers
+ * @param newEntry Possible new entry to the list
+ * @param list Pointer to the list
+ * @param secondPart On false (if first part) will create a new entry, on 
+ * true (second part) will add IP address to it
  */
-void printBetterHexDump(size_t maxLen, const unsigned char* packetData, FrameSections frameS);
+void translationNameHandler(Buffer* newEntry, BufferList* list, bool secondPart);
 
-/**
- * @brief Helping function for printing characters at end of line 
- * (after hexdump) with correct indentation
- * 
- * @param actualVPos actual vertical position
- * @param bytesPrinted how many bytes are going to be printed on this line
- * @param vPos vertical postion
- * @param skipped how many bytes were skipped do to indentation
- * @param packetData array of data
- */
-void printCharsAtEnd(size_t* actualVPos, size_t bytesPrinted, size_t vPos, size_t skipped, const unsigned char* packetData);
 #endif /*OUTPUT_HANDLER*/
