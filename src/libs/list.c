@@ -133,16 +133,19 @@ void listAddRecord(BufferList* list, Buffer* buffer)
         list->first = newRecord;
     }
 
-    // set new record behind last record if exits    
-    if(list->last != NULL)
+    Record* oldLast = list->last; 
+
+    if(list->last == NULL)
     {
-        Record* oldLast = list->last; 
+        list->last = newRecord;
+    }
+    else
+    {
         list->last->next = newRecord;
-        list->last->previous = oldLast;
     }
 
-    // set new record as last
     list->last = newRecord;
+    list->last->previous = oldLast;
     
     // set new record's previous value to NULL
     list->last->next = NULL;
@@ -164,7 +167,6 @@ void listAddRecord(BufferList* list, Buffer* buffer)
 bool listSearch(BufferList* list, Buffer* searched)
 {
     Record* elem = list->last;
-
     while(elem != NULL)
     {
         if(bufferCompare(elem->data, searched))
@@ -172,6 +174,7 @@ bool listSearch(BufferList* list, Buffer* searched)
             return true;
         }
 
+        
         elem = elem->previous;
     }
 

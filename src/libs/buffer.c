@@ -195,9 +195,6 @@ bool bufferCompare(Buffer* first, Buffer* second)
         if(first->data[i] != second->data[i])
             return false;
 
-        if(first->data[i] == '\0' /* || second->data[i] == '\0'*/)
-            break;
-
         if(i >= smaller)
             break;
     }
