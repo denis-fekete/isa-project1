@@ -13,32 +13,31 @@
 // Ethernet frame
 // ----------------------------------------------------------------------------
 
+
+/**
+ * @brief Dissects frame into correct segments and prints relevant info
+ * 
+ * @param packet Byte array containing raw packet data
+ * @param length Length of the packet
+ * @param config Pointer to the Config structure containing pointers to the 
+ * "global" variables and program mode
+ */
 void frameDissector(const unsigned char* packet, size_t length, Config* config)
 {     
     EthernetHeader* eth;
     eth = (EthernetHeader *) packet;
-    
-    unsigned char protocol;
+
+    unsigned offset = sizeof(EthernetHeader);
+
     switch( uchars2uint16(&(eth->etherType[0])) )
     {
         case ETH_TYPE_IPV4:
-            protocol = ipv4Dissector(packet + sizeof(EthernetHeader));
-
-            ipv4ProtocolDissector(protocol, 
-                    packet + sizeof(EthernetHeader) + sizeof(struct iphdr), 
-                    length - sizeof(EthernetHeader) - sizeof(struct iphdr)
-                    );
-            
-            dnsDissector(packet + sizeof(EthernetHeader) + sizeof(struct iphdr) + sizeof(struct udphdr));
-            rrDissector(packet + sizeof(EthernetHeader) + sizeof(struct iphdr) + sizeof(struct udphdr), config);
+            ipv4Dissector(packet + offset, config->verbose);
+            offset += sizeof(struct iphdr);
             break;
         case ETH_TYPE_IPV6:
-            protocol = ipv6Dissector(packet + sizeof(EthernetHeader));
-            ipv6ProtocolDissector(protocol, 
-                    packet + sizeof(EthernetHeader) + sizeof(struct ip6_hdr), 
-                    length - sizeof(EthernetHeader) - sizeof(struct ip6_hdr)
-                    );
-
+            ipv6Dissector(packet + offset, config->verbose);
+            offset += sizeof(struct ip6_hdr);
             break;
         default:
             debugPrint(stdout, "DEBUG: Unknown EtherType: (%hhx %hhx)\n", eth->etherType[0], eth->etherType[1]);
@@ -50,13 +49,22 @@ void frameDissector(const unsigned char* packet, size_t length, Config* config)
             errHandling("Unknown ether type", ERR_UNKNOWN_PROTOCOL);
             break;
     }
+
+    offset += sizeof(struct udphdr);
+    if(config->verbose)
+        verboseDNSDissector(packet);
+    else
+        dnsDissector(packet + offset);
+
+    rrDissector(packet + offset, config);
 }
 
+
 /**
- * @brief Dissects IPv4 protocol 
+ * @brief Breaks unsigned char into 16bit unsigned integer (unsigned short int)
  * 
- * @param packet Pointer to the packet, must start at Internet Protocol
- * @return unsigned char Pointer where IP protocol ends, and protocol stars
+ * @param value 
+ * @return u_int16_t 
  */
 u_int16_t uchars2uint16(unsigned char* value)
 {
@@ -64,26 +72,35 @@ u_int16_t uchars2uint16(unsigned char* value)
     return (u_int16_t) (value[1] +  (value[0] << 8)); 
 }
 
+
 // ----------------------------------------------------------------------------
-// Internet Protocol version 4
+// IPv4 and IPv6
 // ----------------------------------------------------------------------------
 
-unsigned char ipv4Dissector(const unsigned char* packet)
+
+/**
+ * @brief Prints DNS information in non-verbose mode
+ * 
+ * @param packet Byte array containing raw packet
+ */
+void dnsDissector(const unsigned char* packet)
 {
-    struct iphdr* ipv4 = (struct iphdr*) packet;
+    DNSHeader* dns = (struct DNSHeader*) packet;
+    unsigned short correctedFlags = ntohs(dns->flags);
 
-    printf("SrcIP: ");
-    printIPv4(ipv4->saddr, NULL);
-    printf("\n");
-
-    printf("DstIP: ");
-    printIPv4(ipv4->daddr, NULL);
-    printf("\n");
-
-    return ipv4->protocol;
+    printf("(%c ",      (correctedFlags & QR)? 'R' : 'Q');
+    printf("%hu/",      ntohs(dns->noQuestions));
+    printf("%hu/",      ntohs(dns->noAnswers));
+    printf("%hu/",      ntohs(dns->noAuthority));
+    printf("%hu)",    ntohs(dns->noAdditional));
 }
 
-void dnsDissector(const unsigned char* packet)
+/**
+ * @brief Prints DNS information 
+ * 
+ * @param packet Byte array containing raw packet, must start at RDATA
+ */
+void verboseDNSDissector(const unsigned char* packet)
 {
     DNSHeader* dns = (struct DNSHeader*) packet;
     unsigned short correctedFlags = ntohs(dns->flags);
@@ -102,13 +119,134 @@ void dnsDissector(const unsigned char* packet)
     printf("RCODE=%u\n",     correctedFlags & RCODE);
 }
 
-
-typedef struct 
+/**
+ * @brief Dissects DNS packet into parts and prints relevant information
+ * 
+ * @param packet Packet to be dissected, must be at a start of DNS part of the packet
+ * @param config Pointer to configuration structure that holds information about what should be displayed
+ */
+void rrDissector(const unsigned char* packet, Config* config)
 {
-    unsigned value;
-    char jumped; 
-} nameReturnType;
+    Buffer* addr2Print = config->addressToPrint;
 
+    DNSHeader* dns = (struct DNSHeader*) packet;
+    const unsigned char* resourceRecords = packet + sizeof(struct DNSHeader);
+    
+    unsigned ptr = 0;
+
+    if(ntohs(dns->noQuestions) > 0)
+    {
+        if(config->verbose)
+            printf("\n[Question Section]\n");
+
+        ptr += printRRName(resourceRecords, packet, addr2Print);     
+
+        if(config->domainsFile->data != NULL)
+            domainNameHandler(addr2Print, config->domainList);
+
+        if(config->verbose)
+            bufferPrint(addr2Print, 1);
+        bufferClear(addr2Print);
+
+        if(config->verbose)
+            // +2 for two zero bytes after name
+            printRRClass(resourceRecords + ptr + 2);
+
+        if(config->verbose)
+            printRRType(resourceRecords + ptr);
+        ptr += 4; // +2 for the type, +2 for the type
+
+        if(config->verbose)
+            printf("\n");
+    }
+
+    unsigned repeat = 0;
+    for(unsigned i = 0; i < 3; i++)
+    {
+        switch(i)
+        {
+            case 0: repeat = ntohs(dns->noAnswers);
+                break;
+            case 1: repeat = ntohs(dns->noAuthority);
+                break;
+            case 2: repeat = ntohs(dns->noAdditional);
+                break;
+        }
+
+        if(repeat > 0 && config->verbose)
+        {
+            switch(i)
+            {
+                case 0: printf("\n[Answer Section]\n"); break;
+                case 1: printf("\n[Authority Section]\n"); break;
+                case 2: printf("\n[Additional Section]\n"); break;
+            }
+        }
+        for(unsigned i = 0; i < repeat; i++)
+        {
+            ptr += printRRName(resourceRecords+ptr, packet, addr2Print);
+            if(config->verbose)
+                bufferPrint(addr2Print, 1); 
+
+            if(config->verbose)
+                // +4 to get to the ttl
+                printRRTTL(resourceRecords + ptr + 4);
+
+            unsigned isIp = 0;
+            if(config->verbose)
+                // +2 to get to the class
+                isIp = printRRClass(resourceRecords + ptr + 2);
+
+            if(config->verbose)
+                isIp = (isIp)? printRRType(resourceRecords + ptr) : 0;
+
+            ptr += 8; // +4 for ttl, +2 for class, +2 for type
+            
+            // check if capturing domain names is enabled, if yes capture them
+            // first time for name
+            if(config->domainsFile->data != NULL)
+                domainNameHandler(addr2Print, config->domainList);
+            
+            // check if capturing translation is enabled, if yes capture them
+            // first store domain name
+            if(isIp && config->translationsFile->data != NULL)
+                translationNameHandler(addr2Print, config->translationsList, 0);
+
+            bufferClear(addr2Print);
+
+            ptr += printRRRData(resourceRecords + ptr, isIp, packet, addr2Print);
+
+            // check if capturing domain names is enabled, if yes capture them
+            // second time for rdata
+            if(config->domainsFile->data != NULL && !isIp)
+                domainNameHandler(addr2Print, config->domainList);
+
+            if(config->verbose)
+                bufferPrint(addr2Print, 1);
+
+            // check if capturing translation is enabled, if yes capture them
+            // second store translated ip
+            if(isIp && config->translationsFile->data != NULL)
+                translationNameHandler(addr2Print, config->translationsList, 1);
+
+            bufferClear(addr2Print);
+            
+            if(config->verbose)
+                printf("\n");
+        }
+    }
+
+}
+
+
+/**
+ * @brief Stores correct domain name into Buffer
+ * 
+ * @param data Byte array containing raw packet, must start at RDATA
+ * @param dataWOptr Byte array that starts at DNS part of packet (without offset to RDATA)
+ * @param addr2Print Buffer to which characters will be stored into
+ * @return int Return length of NAME segment
+ */
 unsigned printRRName(const unsigned char* data, const unsigned char* dataWOptr, Buffer* addr2Print)
 {
     unsigned ptr = 0;
@@ -143,12 +281,52 @@ unsigned printRRName(const unsigned char* data, const unsigned char* dataWOptr, 
     return 0;
 }
 
+
+/**
+ * @brief Stores correct IP address or domain name into Buffer
+ * 
+ * @param data Byte array containing raw packet, must start at RDATA
+ * @param isIp Sign if A or AAAA type is detected (this will be IP address)
+ * @param dataWOptr Byte array that starts at DNS part of packet (without offset to RDATA)
+ * @param addr2Print Buffer to which characters will be stored into
+ * @return int Return length of RDATA segment
+ */
+int printRRRData(const unsigned char* data, unsigned isIp, const unsigned char* dataWOptr, Buffer* addr2Print)
+{
+    unsigned short dataLen = ntohs(((unsigned short*)(data))[0]);
+
+    if(isIp)
+    {
+       if(isIp == RRType_A)
+            printIPv4(((uint32_t*) (data + 2))[0], addr2Print);
+        else
+            printIPv6((uint32_t*) (data + 2), addr2Print);
+    }
+    else
+        printRRName(data + 2, dataWOptr, addr2Print);
+
+    return dataLen + 2; // +2 is for the two bytes of dataLen 
+}
+
+
+/**
+ * @brief Prints Time To Live onto standard output
+ * 
+ * @param data yte array containing raw packet starting at TTL position
+ */
 void printRRTTL(const unsigned char* data)
 {
     printf(" %lu", (unsigned long)ntohl(((unsigned long*)(data))[0]));
 }
 
-int printRRClass(const unsigned char* data)
+
+/**
+ * @brief Prints Resource Record Type onto standard ouput 
+ * 
+ * @param data Byte array containing raw packet starting at Type position
+ * @return int Returns detected type
+ */
+int printRRType(const unsigned char* data)
 {
     switch (ntohs(((unsigned short*)(data))[0]))
         {
@@ -169,134 +347,36 @@ int printRRClass(const unsigned char* data)
         case RRType_SRV:    printf("SRV ");
             break; 
         default:
+            debugPrint(stdout, "Bad RR Type: %u \n", ntohs(((unsigned short*)(data))[0]));
+            errHandling("Unknown Resource Record Type", ERR_UNKNOWN_PROTOCOL);
             break;
         }
     return 0;
 }
 
-int printRRType(const unsigned char* data)
+
+/**
+ * @brief Prints Resource Record Class onto standard ouput 
+ * 
+ * @param data Byte array containing raw packet starting at Class position
+ * @return int Returns detected class
+ */
+int printRRClass(const unsigned char* data)
 {
     switch (ntohs(((unsigned short*)(data))[0]))
     {
         case 0x0001: printf(" IN ");
             return 1;
             break;
-        default: printf("Unknown Resource Record Class (%u)\n", ntohs(((unsigned short*)(data))[0]));
+        default:
+            debugPrint(stdout, "Bad RR Class: %u \n", ntohs(((unsigned short*)(data))[0]));
+            errHandling("Unknown Resource Record Class", ERR_UNKNOWN_PROTOCOL);
             break;
     }
 
     return 0;
 }
 
-int printRRRData(const unsigned char* data, unsigned isIp, const unsigned char* dataWOptr, Buffer* addr2Print)
-{
-    unsigned short dataLen = ntohs(((unsigned short*)(data))[0]);
-
-    if(isIp)
-    {
-       if(isIp == RRType_A)
-            printIPv4(((uint32_t*) (data + 2))[0], addr2Print);
-        else
-            printIPv6((uint32_t*) (data + 2), addr2Print);
-    }
-    else
-        printRRName(data + 2, dataWOptr, addr2Print);
-
-    return dataLen + 2; // +2 is for the two bytes of dataLen 
-}
-
-/**
- * @brief Dissects DNS packet into parts and prints relevant information
- * 
- * @param packet Packet to be dissected, must be at a start of DNS part of the packet
- * @param config Pointer to configuration structure that holds information about what should be displayed
- */
-void rrDissector(const unsigned char* packet, Config* config)
-{
-    Buffer* addr2Print = config->addressToPrint;
-
-    DNSHeader* dns = (struct DNSHeader*) packet;
-    const unsigned char* resourceRecords = packet + sizeof(struct DNSHeader);
-    
-    unsigned ptr = 0;
-
-    if(ntohs(dns->noQuestions) > 0)
-    {
-        printf("\n[Question Section]\n");
-
-        ptr += printRRName(resourceRecords, packet, addr2Print);     
-
-        if(config->domainsFile->data != NULL)
-            domainNameHandler(addr2Print, config->domainList);
-
-        bufferPrint(addr2Print, 1);
-        bufferClear(addr2Print);
-
-        printRRType(resourceRecords + ptr);
-        ptr += 2;
-        printRRClass(resourceRecords + ptr);
-        ptr += 2;
-        printf("\n");
-    }
-
-    unsigned repeat = 0;
-    for(unsigned i = 0; i < 3; i++)
-    {
-        switch(i)
-        {
-            case 0: repeat = ntohs(dns->noAnswers);
-                break;
-            case 1: repeat = ntohs(dns->noAuthority);
-                break;
-            case 2: repeat = ntohs(dns->noAdditional);
-                break;
-        }
-
-        if(repeat > 0)
-        {
-            switch(i)
-            {
-                case 0: printf("\n[Answer Section]\n"); break;
-                case 1: printf("\n[Authority Section]\n"); break;
-                case 2: printf("\n[Additional Section]\n"); break;
-            }
-        }
-        for(unsigned i = 0; i < repeat; i++)
-        {
-            ptr += printRRName(resourceRecords+ptr, packet, addr2Print);
-            bufferPrint(addr2Print, 1); 
-
-            printRRTTL(resourceRecords + ptr + 4);
-
-            unsigned isIp = printRRType(resourceRecords + ptr + 2);
-
-            isIp = (isIp)? printRRClass(resourceRecords + ptr) : 0;
-            ptr += 8; // apply correct offset after TYPE,CLASS and TTL
-            
-            if(config->domainsFile->data != NULL)
-                domainNameHandler(addr2Print, config->domainList);
-            
-            if(isIp && config->translationsFile->data != NULL)
-                translationNameHandler(addr2Print, config->translationsList, 0);
-
-            bufferClear(addr2Print);
-
-            ptr += printRRRData(resourceRecords + ptr, isIp, packet, addr2Print);
-
-            if(config->domainsFile->data != NULL && !isIp)
-                domainNameHandler(addr2Print, config->domainList);
-
-            bufferPrint(addr2Print, 1);
-
-            if(isIp && config->translationsFile->data != NULL)
-                translationNameHandler(addr2Print, config->translationsList, 1);
-
-            bufferClear(addr2Print);
-            printf("\n");
-        }
-    }
-
-}
 
 /**
  * @brief Dissector of IPv4 protocol
@@ -320,6 +400,41 @@ void ipv4ProtocolDissector(unsigned char protocol, const unsigned char* packet, 
         break;
     }
 }
+
+
+// ----------------------------------------------------------------------------
+// IPv4 and IPv6
+// ----------------------------------------------------------------------------
+
+/**
+ * @brief Dissects IPv4 protocol 
+ * 
+ * @param packet Pointer to the packet, must start at Internet Protocol
+ */
+void ipv4Dissector(const unsigned char* packet, bool verbose)
+{
+    struct iphdr* ipv4 = (struct iphdr*) packet;
+
+    if(verbose)
+    {
+        printf("SrcIP: ");
+        printIPv4(ipv4->saddr, NULL);
+        printf("\n");
+
+        printf("DstIP: ");
+        printIPv4(ipv4->daddr, NULL);
+        printf("\n");
+    }
+    else
+    {
+        printf(" ");
+        printIPv4(ipv4->saddr, NULL);
+        printf(" -> ");
+        printIPv4(ipv4->daddr, NULL);
+        printf(" ");
+    }
+}
+
 
 /**
  * @brief Prints IPv4 address in correct endian
@@ -390,9 +505,6 @@ void printIPv4(u_int32_t address, Buffer* addr2Print)
 
 }
 
-// ----------------------------------------------------------------------------
-// Internet Protocol version 6
-// ----------------------------------------------------------------------------
 
 /**
  * @brief Dissects IPv6 protocol 
@@ -400,39 +512,26 @@ void printIPv4(u_int32_t address, Buffer* addr2Print)
  * @param packet Pointer to the packet, must start at Internet Protocol
  * @return unsigned char Pointer where IP protocol ends, and protocol stars
  */
-unsigned char ipv6Dissector(const unsigned char* packet)
+void ipv6Dissector(const unsigned char* packet, bool verbose)
 {
     struct ip6_hdr* ipv6 = (struct ip6_hdr*) packet;
 
-    printf("SrcIP: ");
-    printIPv6(ipv6->ip6_src.__in6_u.__u6_addr32, NULL);
-
-    printf("DstIP: ");
-    printIPv6(ipv6->ip6_dst.__in6_u.__u6_addr32, NULL);
-    
-    return (unsigned char) packet[sizeof(struct ip6_hdr)];
-}
-
-/**
- * @brief Dissector of IPv6 protocol
- * 
- * @param protocol Protocol to be dissected
- * @param packet Pointer to the packet
- * @param length Maximum length that you can read
- */
-void ipv6ProtocolDissector(unsigned char protocol, const unsigned char* packet, size_t length)
-{
-    if(packet[0]) {} // TODO: delete
-    switch(protocol)
+    if(verbose)
     {
-        // --------------------------------------------------------------------
-        default:         
-            debugPrint(stdout, "\nDEBUG: Unknown protocol: %u\n", protocol);
-            errHandling("\nUnknown transport layer protocol", 9/*TODO:*/);
-            break;
-    }
+        printf("SrcIP: ");
+        printIPv6(ipv6->ip6_src.__in6_u.__u6_addr32, NULL);
 
-    if(length){}
+        printf("DstIP: ");
+        printIPv6(ipv6->ip6_dst.__in6_u.__u6_addr32, NULL);
+    }
+    else
+    {
+        printf(" ");
+        printIPv6(ipv6->ip6_src.__in6_u.__u6_addr32, NULL);
+        printf(" -> ");
+        printIPv6(ipv6->ip6_dst.__in6_u.__u6_addr32, NULL);
+        printf(" ");
+    }
 }
 
 /**

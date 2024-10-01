@@ -28,18 +28,11 @@
 #include "outputHandler.h"
 
 // ----------------------------------------------------------------------------
-//  Structures and enums
+//  Structures, enums and defines
 // ----------------------------------------------------------------------------
 
-// ethernet header length
 #define ETHERNET_ADDR_LEN 6
-// // size of ethernet head
-#define ETH_TYPE_IPV6_LOW 0xDD
-#define ETH_TYPE_IPV6_HIGH 0x86
 #define ETH_TYPE_IPV6 0x86DD
-
-#define ETH_TYPE_IPV4_LOW 0x00
-#define ETH_TYPE_IPV4_HIGH 0x08
 #define ETH_TYPE_IPV4 0x0800
 
 #define QR 0x8000       // 1000 0000 0000 0000
@@ -58,13 +51,6 @@
 #define RRType_SOA 0x0006
 #define RRType_CNAME 0x0005
 #define RRType_SRV 0x0021
-
-typedef struct FrameSections
-{
-    unsigned int dataLen;
-    unsigned int networkLen;
-    unsigned int transportLen;
-} FrameSections;
 
 typedef struct EthernetHeader
 {
@@ -88,24 +74,20 @@ typedef struct DNSHeader
 
 #define IPv4_PROTOCOL_UDP 0x11
 
-#define IP_VER_4 0
-#define IP_VER_6 1
-
 // ----------------------------------------------------------------------------
 //  Functions
 // ----------------------------------------------------------------------------
 
-u_int16_t uchars2uint16(unsigned char* value);
-
-// ----------------------------------------------------------------------------
-// Ethernet frame
-// ----------------------------------------------------------------------------
-
+/**
+ * @brief Dissects frame into correct segments and prints relevant info
+ * 
+ * @param packet Byte array containing raw packet data
+ * @param length Length of the packet
+ * @param config Pointer to the Config structure containing pointers to the 
+ * "global" variables and program mode
+ */
 void frameDissector(const unsigned char* packet, size_t length, Config* config);
 
-// ----------------------------------------------------------------------------
-// Internet Protocol version 4
-// ----------------------------------------------------------------------------
 
 /**
  * @brief Dissects IPv4 protocol 
@@ -113,7 +95,80 @@ void frameDissector(const unsigned char* packet, size_t length, Config* config);
  * @param packet Pointer to the packet, must start at Internet Protocol
  * @return unsigned char Pointer where IP protocol ends, and protocol stars
  */
-unsigned char ipv4Dissector(const unsigned char* packet);
+u_int16_t uchars2uint16(unsigned char* value);
+
+
+// ----------------------------------------------------------------------------
+// IPv4 and IPv6
+// ----------------------------------------------------------------------------
+
+/**
+ * @brief Prints DNS information, transaction id/identifier and flags
+ * 
+ * @param packet Byte array containing raw packet data
+ */
+void dnsDissector(const unsigned char* packet);
+
+/**
+ * @brief Prints DNS information 
+ * 
+ * @param packet Byte array containing raw packet, must start at RDATA
+ */
+void verboseDNSDissector(const unsigned char* packet);
+
+/**
+ * @brief Dissects DNS packet into parts and prints relevant information
+ * 
+ * @param packet Packet to be dissected, must be at a start of DNS part of the packet
+ * @param config Pointer to configuration structure that holds information about what should be displayed
+ */
+void rrDissector(const unsigned char* packet, Config* config);
+
+/**
+ * @brief Stores correct domain name into Buffer
+ * 
+ * @param data Byte array containing raw packet, must start at RDATA
+ * @param dataWOptr Byte array that starts at DNS part of packet (without offset to RDATA)
+ * @param addr2Print Buffer to which characters will be stored into
+ * @return int Return length of NAME segment
+ */
+unsigned printRRName(const unsigned char* data, const unsigned char* dataWOptr, Buffer* addr2Print);
+
+
+/**
+ * @brief Stores correct IP address or domain name into Buffer
+ * 
+ * @param data Byte array containing raw packet, must start at RDATA
+ * @param isIp Sign if A or AAAA type is detected (this will be IP address)
+ * @param dataWOptr Byte array that starts at DNS part of packet (without offset to RDATA)
+ * @param addr2Print Buffer to which characters will be stored into
+ * @return int Return length of RDATA segment
+ */
+int printRRRData(const unsigned char* data, unsigned isIp, const unsigned char* dataWOptr, Buffer* addr2Print);
+
+
+/**
+ * @brief Prints Time To Live onto standard output
+ * 
+ * @param data yte array containing raw packet starting at TTL position
+ */
+void printRRTTL(const unsigned char* data);
+
+/**
+ * @brief Prints Resource Record Type onto standard ouput 
+ * 
+ * @param data Byte array containing raw packet starting at Type position
+ * @return int Returns detected type
+ */
+int printRRType(const unsigned char* data);
+
+/**
+ * @brief Prints Resource Record Class onto standard ouput 
+ * 
+ * @param data Byte array containing raw packet starting at Class position
+ * @return int Returns detected class
+ */
+int printRRClass(const unsigned char* data);
 
 /**
  * @brief Dissector of IPv4 protocol
@@ -124,49 +179,32 @@ unsigned char ipv4Dissector(const unsigned char* packet);
  */
 void ipv4ProtocolDissector(unsigned char protocol, const unsigned char* packet, size_t length);
 
+// ----------------------------------------------------------------------------
+// IPv4 and IPv6
+// ----------------------------------------------------------------------------
+
+/**
+ * @brief Dissects IPv4 protocol 
+ * 
+ * @param packet Pointer to the packet, must start at Internet Protocol
+ */
+void ipv4Dissector(const unsigned char* packet, bool verbose);
+
 /**
  * @brief Prints IPv4 address in correct endian
  * 
  * @param address IPv4 address
+ * @param addr2Print buffer to which will the IPv4 address stored, if NULL 
+ * address will be printed onto stdout
  */
 void printIPv4(u_int32_t address, Buffer* addr2Print);
-
-/**
- * @brief Prints DNS information
- * 
- * @param packet byte array with data from packet
- */
-void dnsDissector(const unsigned char* packet);
-
-/**
- * @brief Dissects DNS packet into parts and prints relevant information
- * 
- * @param packet Packet to be dissected, must be at a start of DNS part of the packet
- * @param config Pointer to configuration structure that holds information about what should be displayed
- */
-void rrDissector(const unsigned char* packet, Config* config);
-
-
-// ----------------------------------------------------------------------------
-// Internet Protocol version 6
-// ----------------------------------------------------------------------------
 
 /**
  * @brief Dissects IPv6 protocol 
  * 
  * @param packet Pointer to the packet, must start at Internet Protocol
- * @return unsigned char Pointer where IP protocol ends, and protocol stars
  */
-unsigned char ipv6Dissector(const unsigned char* packet);
-
-/**
- * @brief Dissector of IPv6 protocol
- * 
- * @param protocol Protocol to be dissected
- * @param packet Pointer to the packet
- * @param length Maximum length that you can read
- */
-void ipv6ProtocolDissector(unsigned char protocol, const unsigned char* packet, size_t length);
+void ipv6Dissector(const unsigned char* packet, bool verbose);
 
 /**
  * @brief Prints IPv6 address in correct system endian
@@ -174,11 +212,5 @@ void ipv6ProtocolDissector(unsigned char protocol, const unsigned char* packet, 
  * @param address pointer to u_int32_t[4]   
  */
 void printIPv6(u_int32_t* address, Buffer* addr2Print);
-
-// ----------------------------------------------------------------------------
-// Address Resolution Protocol
-// ----------------------------------------------------------------------------
-
-unsigned char arpDissector(const unsigned char* packet);
 
 #endif /*PACKET_DISSECTOR_H*/

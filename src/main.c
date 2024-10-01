@@ -97,7 +97,6 @@ int main(int argc, char* argv[])
     pthread_create(&thread, NULL, threadFunction, config);
     pthread_join(thread, NULL);
 
-    
     saveToFiles(config);
 
     // Close and cleanup
@@ -105,6 +104,7 @@ int main(int argc, char* argv[])
     {    
         destroyConfig(config);
     }   
+    
     return 0;
 }
 

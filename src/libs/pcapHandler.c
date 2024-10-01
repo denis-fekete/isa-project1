@@ -71,7 +71,6 @@ pcap_t* pcapSetup(Config* config, pcap_if_t** allDevices)
     else
         handle = pcapOnlineSetup(config, allDevices, &device);
 
-    
     if(handle == NULL)
     {
         fprintf(stderr, "ERR: Couldn't open device %s: %s\n", device->name, config->cleanup.pcapErrbuff);
