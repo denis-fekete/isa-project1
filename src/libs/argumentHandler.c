@@ -80,7 +80,6 @@ void argumentHandler(int argc, char* argv[], Config* config)
                 errHandling("", 0);
                 break;
             case 'n':
-                // TODO: add some checking for valid numbers
                 if(stringIsValidUInt(optarg))
                     config->numberOfPackets = atoi(optarg);
                 else
@@ -105,43 +104,27 @@ void argumentHandler(int argc, char* argv[], Config* config)
 void printCliHelpMenu(const char* executableName)
 {
     printf(
-        "Usage: %s [OPTION] [ARGUMENT] ...\n"
-        "Starts client for communication with server at provided address "
-        "(through -s OPTION) using IPK24-CHAT Protocol based on TCP or "
-        "UDP (based on -t OPTION)\n"
+        "Usage: ./%s (-i <interface> | -p <pcapfile>) "
+        "[-v] [-d <domainsfile>] "
+        "[-t <translationsfile>]\n"
         "\n"
         "Mandatory options:\n"
-        "\t-i | --interface\t- "
-        "Sets interface from which will program capture network traffic\n"
-        "\nNon-mandatory options:\n"
-        "\t--arp\t\t\t- "
-        "Only ARP packets will be captured\n"
-        "\t--icmp4\t\t\t- "
-        "Only ICMP for IPv4 will be captured\n"
-        "\t--icmp6\t\t\t- "
-        "Only ICMP for IPv6 will be captured\n"
-        "\t--igmp\t\t\t- "
-        "Only IGMP will be captured\n"
-        "\t-h | --help\t\t\t- "
-        "Prints this help menu end exits program with code 0\n"
-        "\t--ndp\t\t\t- "
-        "Only NDP will be captured\n"
-        "\t--MLD\t\t\t- "
-        "Only MLD will be captured\n"
-        "\t-p\t\t\t- "
-        "Will display only traffic that has {PORT_NUMBER} as source or destination\n"
-        "\t--port-destination {PORT_NUMBER}\t\t- "
-        "Will display only traffic that has {PORT_NUMBER} destination port "
-        "(can be combined with --port-source)\n"
-        "\t--port-source {PORT_NUMBER}\t\t\t- "
-        "Will display only traffic that has {PORT_NUMBER} source port "
-        "(can be combined with --port-destination)\n"
-        "\t--tcp\t\t\t- "
-        "Only TCP packets will be captured (can be combined with --udp option)\n"
-        "\t--udp\t\t\t- "
-        "Only UDO packets will be captured (can be combined with --tcp option)\n"
-        "\t--wslike\t\t\t- "
-        "Printed hexdump will be formatted more like wireshark\n"
+        "\t-i | --interface                - Sets interface that program will\n" 
+        "\t                                  monitor for DNS communication\n"
+        "\t-p | --pcapfile <PATH_TO_FILE>  - Opens a .pcapng file from which \n"
+        "\t                                  program will read captured DNS \n"
+        "\t                                  communication\n"
+        "Non-mandatory options:\n"
+        "\t-v | --verbose                  - Prints full details about DNS \n"
+        "\t                                  communication, otherwise a output\n"
+        "\t                                  will be in compacted version\n"
+        "\t-d | --domainsfile <PATH>       - All domain names will be stored in\n"
+        "\t                                  specified <PATH> file\n"
+        "\t-t | --translationsfile <PATH>  - All translations from domain name \n"
+        "\t                                  to IP addresses will be stored in \n"
+        "\t                                  <PATH> specified file\n"
+        "\t-h | --help                     - Prints this help menu end exits \n"
+        "\t                                  program with code 0\n"
         , executableName
     );
 }

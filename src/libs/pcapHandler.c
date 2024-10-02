@@ -102,7 +102,7 @@ pcap_t* pcapSetup(Config* config, pcap_if_t** allDevices)
     // Filter expression
     Buffer expr;
     bufferInit(&expr);
-    bufferAddString(&expr, "port 53");
+    bufferAddString(&expr, "udp && port 53");
     bufferAddChar(&expr, 0);
 
     struct bpf_program fp; // Stuct that holds compiled filter expression

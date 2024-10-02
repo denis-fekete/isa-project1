@@ -9,11 +9,6 @@
 
 #include "packetDissector.h"
 
-// ----------------------------------------------------------------------------
-// Ethernet frame
-// ----------------------------------------------------------------------------
-
-
 /**
  * @brief Dissects frame into correct segments and prints relevant info
  * 
@@ -24,6 +19,9 @@
  */
 void frameDissector(const unsigned char* packet, size_t length, Config* config)
 {     
+    //TODO:
+    if(length) {}
+
     EthernetHeader* eth;
     eth = (EthernetHeader *) packet;
 
@@ -52,7 +50,7 @@ void frameDissector(const unsigned char* packet, size_t length, Config* config)
 
     offset += sizeof(struct udphdr);
     if(config->verbose)
-        verboseDNSDissector(packet);
+        verboseDNSDissector(packet + offset);
     else
         dnsDissector(packet + offset);
 
@@ -119,6 +117,8 @@ void verboseDNSDissector(const unsigned char* packet)
     printf("RCODE=%u\n",     correctedFlags & RCODE);
 }
 
+#define IS_IP() (type == RRType_A || type == RRType_AAAA)
+
 /**
  * @brief Dissects DNS packet into parts and prints relevant information
  * 
@@ -161,6 +161,7 @@ void rrDissector(const unsigned char* packet, Config* config)
     }
 
     unsigned repeat = 0;
+    unsigned short type;
     for(unsigned i = 0; i < 3; i++)
     {
         switch(i)
@@ -192,13 +193,12 @@ void rrDissector(const unsigned char* packet, Config* config)
                 // +4 to get to the ttl
                 printRRTTL(resourceRecords + ptr + 4);
 
-            unsigned isIp = 0;
             if(config->verbose)
                 // +2 to get to the class
-                isIp = printRRClass(resourceRecords + ptr + 2);
+                printRRClass(resourceRecords + ptr + 2);
 
             if(config->verbose)
-                isIp = (isIp)? printRRType(resourceRecords + ptr) : 0;
+                type = printRRType(resourceRecords + ptr);
 
             ptr += 8; // +4 for ttl, +2 for class, +2 for type
             
@@ -209,16 +209,16 @@ void rrDissector(const unsigned char* packet, Config* config)
             
             // check if capturing translation is enabled, if yes capture them
             // first store domain name
-            if(isIp && config->translationsFile->data != NULL)
+            if(config->translationsFile->data != NULL && IS_IP())
                 translationNameHandler(addr2Print, config->translationsList, 0);
 
             bufferClear(addr2Print);
 
-            ptr += printRRRData(resourceRecords + ptr, isIp, packet, addr2Print);
+            ptr += printRRRData(resourceRecords + ptr, type, packet, addr2Print);
 
             // check if capturing domain names is enabled, if yes capture them
             // second time for rdata
-            if(config->domainsFile->data != NULL && !isIp)
+            if(config->domainsFile->data != NULL && !(IS_IP()))
                 domainNameHandler(addr2Print, config->domainList);
 
             if(config->verbose)
@@ -226,7 +226,7 @@ void rrDissector(const unsigned char* packet, Config* config)
 
             // check if capturing translation is enabled, if yes capture them
             // second store translated ip
-            if(isIp && config->translationsFile->data != NULL)
+            if(config->translationsFile->data != NULL && IS_IP())
                 translationNameHandler(addr2Print, config->translationsList, 1);
 
             bufferClear(addr2Print);
