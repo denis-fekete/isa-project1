@@ -190,16 +190,23 @@ void rrDissector(const unsigned char* packet, Config* config)
                 bufferPrint(addr2Print, 1); 
 
             if(config->verbose)
+            {
                 // +4 to get to the ttl
                 printRRTTL(resourceRecords + ptr + 4);
+            }
 
             if(config->verbose)
+            {
                 // +2 to get to the class
-                printRRClass(resourceRecords + ptr + 2);
-
+                if(printRRClass(resourceRecords + ptr + 2) == RRType_UNKNOWN)
+                    continue;
+            }
             if(config->verbose)
+            {
                 type = printRRType(resourceRecords + ptr);
-
+                if(type == RRType_UNKNOWN)
+                    continue;
+            }
             ptr += 8; // +4 for ttl, +2 for class, +2 for type
             
             // check if capturing domain names is enabled, if yes capture them
@@ -255,7 +262,9 @@ unsigned printRRName(const unsigned char* data, const unsigned char* dataWOptr, 
         const unsigned char lengthOctet = (data)[ptr];
         if(lengthOctet == 0)
         {
-            bufferSetUsed(addr2Print, addr2Print->used - 1);
+            if(addr2Print->used > 0)
+                bufferSetUsed(addr2Print, addr2Print->used - 1);
+
             ptr++;
             return ptr;
         }
@@ -312,7 +321,7 @@ int printRRRData(const unsigned char* data, unsigned isIp, const unsigned char* 
 /**
  * @brief Prints Time To Live onto standard output
  * 
- * @param data yte array containing raw packet starting at TTL position
+ * @param data Byte array containing raw packet starting at TTL position
  */
 void printRRTTL(const unsigned char* data)
 {
@@ -329,7 +338,7 @@ void printRRTTL(const unsigned char* data)
 int printRRType(const unsigned char* data)
 {
     switch (ntohs(((unsigned short*)(data))[0]))
-        {
+    {
         case RRType_A:      printf("A ");
             return RRType_A;
             break;
@@ -337,21 +346,23 @@ int printRRType(const unsigned char* data)
             return RRType_AAAA;
             break; 
         case RRType_NS:     printf("NS ");
+            return RRType_NS;
             break; 
         case RRType_MX:     printf("MX ");
+            return RRType_MX;
             break; 
         case RRType_SOA:    printf("SOA ");
+            return RRType_SOA;
             break; 
         case RRType_CNAME:  printf("CNAME ");
+            return RRType_CNAME;
             break; 
         case RRType_SRV:    printf("SRV ");
+            return RRType_SRV;
             break; 
-        default:
-            debugPrint(stdout, "Bad RR Type: %u \n", ntohs(((unsigned short*)(data))[0]));
-            errHandling("Unknown Resource Record Type", ERR_UNKNOWN_PROTOCOL);
-            break;
-        }
-    return 0;
+    }
+
+    return RRType_UNKNOWN;
 }
 
 
@@ -368,13 +379,8 @@ int printRRClass(const unsigned char* data)
         case 0x0001: printf(" IN ");
             return 1;
             break;
-        default:
-            debugPrint(stdout, "Bad RR Class: %u \n", ntohs(((unsigned short*)(data))[0]));
-            errHandling("Unknown Resource Record Class", ERR_UNKNOWN_PROTOCOL);
-            break;
+        default: return RRType_UNKNOWN;
     }
-
-    return 0;
 }
 
 

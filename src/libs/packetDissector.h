@@ -51,6 +51,8 @@
 #define RRType_SOA 0x0006
 #define RRType_CNAME 0x0005
 #define RRType_SRV 0x0021
+#define RRType_UNKNOWN 0x0000
+
 
 typedef struct EthernetHeader
 {
