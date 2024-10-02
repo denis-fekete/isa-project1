@@ -53,6 +53,8 @@
 #define RRType_SRV 0x0021
 #define RRType_UNKNOWN 0x0000
 
+#define RRClass_IN 0x0001
+#define RRClass_UNKNOWN 0x0000
 
 typedef struct EthernetHeader
 {
@@ -125,6 +127,16 @@ void verboseDNSDissector(const unsigned char* packet);
  * @param config Pointer to configuration structure that holds information about what should be displayed
  */
 void rrDissector(const unsigned char* packet, Config* config);
+
+/**
+ * @brief Checks if new query contains supported type of class
+ * 
+ * @param data Byte array containing raw packet data starting at Type section 
+ * DNS message
+ * @return true Is valid/known message type/class
+ * @return false Is not valid/known message type/class
+ */
+bool isValidTypeOrClass(const unsigned char* data);
 
 /**
  * @brief Stores correct domain name into Buffer

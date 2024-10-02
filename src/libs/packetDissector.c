@@ -189,6 +189,9 @@ void rrDissector(const unsigned char* packet, Config* config)
             if(config->verbose)
                 bufferPrint(addr2Print, 1); 
 
+            if(!isValidTypeOrClass(resourceRecords + ptr))
+                continue;
+
             if(config->verbose)
             {
                 // +4 to get to the ttl
@@ -196,17 +199,12 @@ void rrDissector(const unsigned char* packet, Config* config)
             }
 
             if(config->verbose)
-            {
                 // +2 to get to the class
-                if(printRRClass(resourceRecords + ptr + 2) == RRType_UNKNOWN)
-                    continue;
-            }
+                printRRClass(resourceRecords + ptr + 2);
+
             if(config->verbose)
-            {
                 type = printRRType(resourceRecords + ptr);
-                if(type == RRType_UNKNOWN)
-                    continue;
-            }
+
             ptr += 8; // +4 for ttl, +2 for class, +2 for type
             
             // check if capturing domain names is enabled, if yes capture them
@@ -245,6 +243,46 @@ void rrDissector(const unsigned char* packet, Config* config)
 
 }
 
+/**
+ * @brief Checks if new query contains supported type of class
+ * 
+ * @param data Byte array containing raw packet data starting at Type section 
+ * DNS message
+ * @return true Is valid/known message type/class
+ * @return false Is not valid/known message type/class
+ */
+bool isValidTypeOrClass(const unsigned char* data)
+{
+    bool valid = false;
+    // no need for offset
+    switch (ntohs(((unsigned short*)(data))[0]))
+    {
+        case RRType_A:
+        case RRType_AAAA:
+        case RRType_NS:
+        case RRType_MX:
+        case RRType_SOA:
+        case RRType_CNAME:
+        case RRType_SRV:
+            valid = true;
+            break;
+    }
+
+    if(valid == false)
+        return false;
+
+    // +2 is offset after name to the class
+    switch (ntohs(((unsigned short*)(data + 2))[0]))
+    {
+        case RRClass_IN:
+            valid = true;
+            break;
+        default:
+            valid = false;            
+    }
+
+    return valid;
+}
 
 /**
  * @brief Stores correct domain name into Buffer
@@ -376,8 +414,8 @@ int printRRClass(const unsigned char* data)
 {
     switch (ntohs(((unsigned short*)(data))[0]))
     {
-        case 0x0001: printf(" IN ");
-            return 1;
+        case RRClass_IN: printf(" IN ");
+            return RRClass_IN;
             break;
         default: return RRType_UNKNOWN;
     }
