@@ -19,21 +19,27 @@
  */
 void frameDissector(const unsigned char* packet, size_t length, Config* config)
 {     
-    //TODO:
-    if(length) {}
-
     EthernetHeader* eth;
     eth = (EthernetHeader *) packet;
 
     unsigned offset = sizeof(EthernetHeader);
 
+    if(length < offset)
+        errHandling("Received packet is not long enough, probably malfunctioned packet", ERR_BAD_PACKET);
+
     switch( uchars2uint16(&(eth->etherType[0])) )
     {
         case ETH_TYPE_IPV4:
+            if(length < offset + sizeof(struct iphdr))
+                errHandling("Received packet is not long enough, probably malfunctioned packet", ERR_BAD_PACKET);
+
             ipv4Dissector(packet + offset, config->verbose);
             offset += sizeof(struct iphdr);
             break;
         case ETH_TYPE_IPV6:
+            if(length < offset + sizeof(struct ip6_hdr))
+                errHandling("Received packet is not long enough, probably malfunctioned packet", ERR_BAD_PACKET);
+
             ipv6Dissector(packet + offset, config->verbose);
             offset += sizeof(struct ip6_hdr);
             break;
@@ -48,13 +54,22 @@ void frameDissector(const unsigned char* packet, size_t length, Config* config)
             break;
     }
 
+    if(length < offset + sizeof(struct udphdr))
+        errHandling("Received packet is not long enough, probably malfunctioned packet", ERR_BAD_PACKET);
+
+    if(config->verbose)
+        udpDissector(packet + offset);
     offset += sizeof(struct udphdr);
+
+    if(length < offset + sizeof(struct DNSHeader))
+        errHandling("Received packet is not long enough, probably malfunctioned packet", ERR_BAD_PACKET);
+
     if(config->verbose)
         verboseDNSDissector(packet + offset);
     else
         dnsDissector(packet + offset);
 
-    rrDissector(packet + offset, config);
+    rrDissector(packet + offset, config, length);
 }
 
 
@@ -119,19 +134,31 @@ void verboseDNSDissector(const unsigned char* packet)
 
 #define IS_IP() (type == RRType_A || type == RRType_AAAA)
 
+#define LEN_CHECK(var)                  \
+    if(maxLen < currLen + ptr + var)    \
+    {                                   \
+        errHandling("Received packet is not long enough, probably malfunctioned packet", ERR_BAD_PACKET); \
+    }
+
+
 /**
  * @brief Dissects DNS packet into parts and prints relevant information
  * 
  * @param packet Packet to be dissected, must be at a start of DNS part of the packet
  * @param config Pointer to configuration structure that holds information about what should be displayed
+ * @param maxLen Maximum allowed length of packet
  */
-void rrDissector(const unsigned char* packet, Config* config)
+void rrDissector(const unsigned char* packet, Config* config, size_t maxLen)
 {
     Buffer* addr2Print = config->addressToPrint;
+    size_t currLen = sizeof(struct EthernetHeader) + sizeof(struct iphdr) + 
+                        sizeof(struct ip6_hdr) + sizeof(DNSHeader);
 
+    // dns header to know number of queries to be expected
     DNSHeader* dns = (struct DNSHeader*) packet;
     const unsigned char* resourceRecords = packet + sizeof(struct DNSHeader);
     
+    // pointer in packet byte array, offset...
     unsigned ptr = 0;
 
     if(ntohs(dns->noQuestions) > 0)
@@ -139,7 +166,9 @@ void rrDissector(const unsigned char* packet, Config* config)
         if(config->verbose)
             printf("\n[Question Section]\n");
 
-        ptr += printRRName(resourceRecords, packet, addr2Print);     
+        ptr += printRRName(resourceRecords, packet, addr2Print, currLen, maxLen);     
+
+        LEN_CHECK(0);
 
         if(config->domainsFile->data != NULL)
             domainNameHandler(addr2Print, config->domainList);
@@ -168,7 +197,8 @@ void rrDissector(const unsigned char* packet, Config* config)
         {
             case 0: repeat = ntohs(dns->noAnswers);
                 break;
-            case 1: repeat = ntohs(dns->noAuthority);
+            // case 1: repeat = ntohs(dns->noAuthority);
+            case 1: repeat = 4;
                 break;
             case 2: repeat = ntohs(dns->noAdditional);
                 break;
@@ -185,7 +215,11 @@ void rrDissector(const unsigned char* packet, Config* config)
         }
         for(unsigned i = 0; i < repeat; i++)
         {
-            ptr += printRRName(resourceRecords+ptr, packet, addr2Print);
+            ptr += printRRName(resourceRecords+ptr, packet, addr2Print, currLen + ptr, maxLen);
+
+            // +4 for ttl, +2 for class, +2 for type
+            LEN_CHECK(8);
+
             if(config->verbose)
                 bufferPrint(addr2Print, 1); 
 
@@ -214,7 +248,7 @@ void rrDissector(const unsigned char* packet, Config* config)
 
             bufferClear(addr2Print);
 
-            ptr += printRRRData(resourceRecords + ptr, type, packet, addr2Print);
+            ptr += printRRRData(resourceRecords + ptr, type, packet, addr2Print, ptr, maxLen);
 
             // check if capturing domain names is enabled, if yes capture them
             // second time for rdata
@@ -238,6 +272,7 @@ void rrDissector(const unsigned char* packet, Config* config)
 
 }
 
+#undef IS_IP
 
 /**
  * @brief Stores correct domain name into Buffer
@@ -245,13 +280,19 @@ void rrDissector(const unsigned char* packet, Config* config)
  * @param data Byte array containing raw packet, must start at RDATA
  * @param dataWOptr Byte array that starts at DNS part of packet (without offset to RDATA)
  * @param addr2Print Buffer to which characters will be stored into
+ * @param currLen Current length of packet
+ * @param maxLen Maximum allowed length of packet
  * @return int Return length of NAME segment
  */
-unsigned printRRName(const unsigned char* data, const unsigned char* dataWOptr, Buffer* addr2Print)
+unsigned printRRName(const unsigned char* data, const unsigned char* dataWOptr, 
+                        Buffer* addr2Print, size_t currLen, size_t maxLen)
 {
     unsigned ptr = 0;
     for(;1;)
     {
+        if(ptr + currLen > maxLen)
+            errHandling("Received packet is not long enough, probably malfunctioned packet", ERR_BAD_PACKET);            
+
         const unsigned char lengthOctet = (data)[ptr];
         if(lengthOctet == 0)
         {
@@ -263,7 +304,7 @@ unsigned printRRName(const unsigned char* data, const unsigned char* dataWOptr, 
         {
             const unsigned short jumpPtr = ((data[ptr] << 8) | data[ptr + 1]) & 0x3fff;
             
-            printRRName(dataWOptr + jumpPtr, dataWOptr, addr2Print);
+            printRRName(dataWOptr + jumpPtr, dataWOptr, addr2Print, currLen + ptr, maxLen);
 
             // return ptr + 2 for the jump pointer
             return ptr + 2;
@@ -289,21 +330,43 @@ unsigned printRRName(const unsigned char* data, const unsigned char* dataWOptr, 
  * @param isIp Sign if A or AAAA type is detected (this will be IP address)
  * @param dataWOptr Byte array that starts at DNS part of packet (without offset to RDATA)
  * @param addr2Print Buffer to which characters will be stored into
+ * @param currLen Current length of packet
+ * @param maxLen Maximum allowed length of packet
  * @return int Return length of RDATA segment
  */
-int printRRRData(const unsigned char* data, unsigned isIp, const unsigned char* dataWOptr, Buffer* addr2Print)
+
+int printRRRData(const unsigned char* data, unsigned isIp, 
+                    const unsigned char* dataWOptr, Buffer* addr2Print, 
+                    size_t currLen, size_t maxLen)
 {
+    if(currLen + 2 > maxLen)
+        errHandling("Received packet is not long enough, probably malfunctioned packet", ERR_BAD_PACKET);            
+
+
     unsigned short dataLen = ntohs(((unsigned short*)(data))[0]);
 
     if(isIp)
     {
+        // +2 is offset after datalen
        if(isIp == RRType_A)
+        {
+            // +4 for size of ipv4 in bytes
+            if(currLen + 4 > maxLen)
+                errHandling("Received packet is not long enough, probably malfunctioned packet", ERR_BAD_PACKET);  
+
             printIPv4(((uint32_t*) (data + 2))[0], addr2Print);
+        }
         else
+        {
+            // +16 for size of ipv4 in bytes
+            if(currLen + 16 > maxLen)
+                errHandling("Received packet is not long enough, probably malfunctioned packet", ERR_BAD_PACKET);    
+
             printIPv6((uint32_t*) (data + 2), addr2Print);
+        }
     }
     else
-        printRRName(data + 2, dataWOptr, addr2Print);
+        printRRName(data + 2, dataWOptr, addr2Print, currLen, maxLen);
 
     return dataLen + 2; // +2 is for the two bytes of dataLen 
 }
@@ -407,9 +470,24 @@ void ipv4ProtocolDissector(unsigned char protocol, const unsigned char* packet, 
 // ----------------------------------------------------------------------------
 
 /**
+ * @brief Prints UDP information like src and dst port
+ * 
+ * @param packet Byte array containing raw packet data with offset to udp header 
+ */
+void udpDissector(const unsigned char* packet)
+{
+    struct udphdr* udp = (struct udphdr*) packet; 
+
+    printf("SrcPort: %hu\n", ntohs(udp->source));
+    printf("DstPort: %hu\n", ntohs(udp->dest));
+}
+
+
+/**
  * @brief Dissects IPv4 protocol 
  * 
  * @param packet Pointer to the packet, must start at Internet Protocol
+ * @param verbose Setting if information display is should be detailed or not
  */
 void ipv4Dissector(const unsigned char* packet, bool verbose)
 {

@@ -40,7 +40,8 @@ typedef enum ErrorCodes
     ERR_BAD_ARGS,
     ERR_FILE,
     ERR_UNKNOWN_PROTOCOL,
-    ERR_NONEXISTING_FILE
+    ERR_NONEXISTING_FILE,
+    ERR_BAD_PACKET
 } errCodes_t;
 
 // ----------------------------------------------------------------------------

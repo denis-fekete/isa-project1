@@ -121,8 +121,9 @@ void verboseDNSDissector(const unsigned char* packet);
  * 
  * @param packet Packet to be dissected, must be at a start of DNS part of the packet
  * @param config Pointer to configuration structure that holds information about what should be displayed
+ * @param maxLen Maximum allowed length of packet
  */
-void rrDissector(const unsigned char* packet, Config* config);
+void rrDissector(const unsigned char* packet, Config* config, size_t maxLen);
 
 /**
  * @brief Stores correct domain name into Buffer
@@ -130,9 +131,12 @@ void rrDissector(const unsigned char* packet, Config* config);
  * @param data Byte array containing raw packet, must start at RDATA
  * @param dataWOptr Byte array that starts at DNS part of packet (without offset to RDATA)
  * @param addr2Print Buffer to which characters will be stored into
+ * @param currLen Current length of packet
+ * @param maxLen Maximum allowed length of packet
  * @return int Return length of NAME segment
  */
-unsigned printRRName(const unsigned char* data, const unsigned char* dataWOptr, Buffer* addr2Print);
+unsigned printRRName(const unsigned char* data, const unsigned char* dataWOptr, 
+                        Buffer* addr2Print, size_t currLen, size_t maxLen);
 
 
 /**
@@ -142,10 +146,14 @@ unsigned printRRName(const unsigned char* data, const unsigned char* dataWOptr, 
  * @param isIp Sign if A or AAAA type is detected (this will be IP address)
  * @param dataWOptr Byte array that starts at DNS part of packet (without offset to RDATA)
  * @param addr2Print Buffer to which characters will be stored into
+ * @param currLen Current length of packet
+ * @param maxLen Maximum allowed length of packet
  * @return int Return length of RDATA segment
  */
-int printRRRData(const unsigned char* data, unsigned isIp, const unsigned char* dataWOptr, Buffer* addr2Print);
 
+int printRRRData(const unsigned char* data, unsigned isIp, 
+                    const unsigned char* dataWOptr, Buffer* addr2Print, 
+                    size_t currLen, size_t maxLen);
 
 /**
  * @brief Prints Time To Live onto standard output
@@ -182,6 +190,13 @@ void ipv4ProtocolDissector(unsigned char protocol, const unsigned char* packet, 
 // ----------------------------------------------------------------------------
 // IPv4 and IPv6
 // ----------------------------------------------------------------------------
+
+/**
+ * @brief Prints UDP information like src and dst port
+ * 
+ * @param packet Byte array containing raw packet data with offset to udp header 
+ */
+void udpDissector(const unsigned char* packet);
 
 /**
  * @brief Dissects IPv4 protocol 
