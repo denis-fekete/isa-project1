@@ -24,7 +24,8 @@ void errHandling(const char* errMessage, int errorCode)
         // filter out empty messages
         if(strcmp(errMessage, "") != 0)
         {
-            fprintf(stderr, "ERR: %s\n", errMessage);
+            fflush(stdout); // flush contents of stdout so last displayed msg is error
+            fprintf(stderr, "\nERR: %s\n", errMessage);
         }
     }
 

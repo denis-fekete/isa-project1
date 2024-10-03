@@ -11,10 +11,13 @@
 
 pcap_t* pcapOfflineSetup(Config* config)
 {
+    // open file for reading captured packets
     config->cleanup.pcapFile = fopen(config->pcapFileName->data, "r");
+
     if(config->cleanup.pcapFile == NULL)
         errHandling("Couldn't open file for reading captured packets", ERR_FILE);
 
+    // return pcap handle
     return pcap_fopen_offline(config->cleanup.pcapFile, config->cleanup.pcapErrbuff);
 }
 
@@ -56,6 +59,7 @@ pcap_t* pcapOnlineSetup(Config* config, pcap_if_t** allDevices, pcap_if_t** devi
         }
     }
 
+    // return pcap handle
     return pcap_open_live((*device)->name, BUFSIZ, true, 1000, config->cleanup.pcapErrbuff);
 }
 

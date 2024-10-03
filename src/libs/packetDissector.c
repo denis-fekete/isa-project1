@@ -27,7 +27,11 @@ void frameDissector(const unsigned char* packet, size_t length, Config* config)
     if(length < offset)
         errHandling("Received packet is not long enough, probably malfunctioned packet", ERR_BAD_PACKET);
 
-    switch( uchars2uint16(&(eth->etherType[0])) )
+
+    unsigned short etherType = ntohs(((unsigned short*) (eth->etherType))[0]);
+    if(etherType != uchars2uint16(&(eth->etherType[0])))
+        debugPrint(stdout, "\n\nZLE!!\n\n");
+    switch( etherType )
     {
         case ETH_TYPE_IPV4:
             if(length < offset + sizeof(struct iphdr))
@@ -69,14 +73,14 @@ void frameDissector(const unsigned char* packet, size_t length, Config* config)
     else
         dnsDissector(packet + offset);
 
-    rrDissector(packet + offset, config, length);
+    rrDissector(packet + offset, config, length - offset - sizeof(struct DNSHeader));
 }
 
 
 /**
  * @brief Breaks unsigned char into 16bit unsigned integer (unsigned short int)
  * 
- * @param value 
+ * @param value Input array containing value to be broken to unsigned integer
  * @return u_int16_t 
  */
 u_int16_t uchars2uint16(unsigned char* value)
@@ -135,7 +139,7 @@ void verboseDNSDissector(const unsigned char* packet)
 #define IS_IP() (type == RRType_A || type == RRType_AAAA)
 
 #define LEN_CHECK(var)                  \
-    if(maxLen < currLen + ptr + var)    \
+    if(maxLen < ptr + var)              \
     {                                   \
         errHandling("Received packet is not long enough, probably malfunctioned packet", ERR_BAD_PACKET); \
     }
@@ -151,8 +155,6 @@ void verboseDNSDissector(const unsigned char* packet)
 void rrDissector(const unsigned char* packet, Config* config, size_t maxLen)
 {
     Buffer* addr2Print = config->addressToPrint;
-    size_t currLen = sizeof(struct EthernetHeader) + sizeof(struct iphdr) + 
-                        sizeof(struct ip6_hdr) + sizeof(DNSHeader);
 
     // dns header to know number of queries to be expected
     DNSHeader* dns = (struct DNSHeader*) packet;
@@ -166,7 +168,7 @@ void rrDissector(const unsigned char* packet, Config* config, size_t maxLen)
         if(config->verbose)
             printf("\n[Question Section]\n");
 
-        ptr += printRRName(resourceRecords, packet, addr2Print, currLen, maxLen);     
+        ptr += printRRName(resourceRecords, packet, addr2Print, ptr, maxLen);     
 
         LEN_CHECK(0);
 
@@ -197,8 +199,7 @@ void rrDissector(const unsigned char* packet, Config* config, size_t maxLen)
         {
             case 0: repeat = ntohs(dns->noAnswers);
                 break;
-            // case 1: repeat = ntohs(dns->noAuthority);
-            case 1: repeat = 4;
+            case 1: repeat = ntohs(dns->noAuthority);
                 break;
             case 2: repeat = ntohs(dns->noAdditional);
                 break;
@@ -215,7 +216,7 @@ void rrDissector(const unsigned char* packet, Config* config, size_t maxLen)
         }
         for(unsigned i = 0; i < repeat; i++)
         {
-            ptr += printRRName(resourceRecords+ptr, packet, addr2Print, currLen + ptr, maxLen);
+            ptr += printRRName(resourceRecords+ptr, packet, addr2Print, ptr, maxLen);
 
             // +4 for ttl, +2 for class, +2 for type
             LEN_CHECK(8);
@@ -291,7 +292,7 @@ unsigned printRRName(const unsigned char* data, const unsigned char* dataWOptr,
     for(;1;)
     {
         if(ptr + currLen > maxLen)
-            errHandling("Received packet is not long enough, probably malfunctioned packet", ERR_BAD_PACKET);            
+            errHandling("Received packet is not long enough, probably malfunctioned packet (in printRRName)", ERR_BAD_PACKET);            
 
         const unsigned char lengthOctet = (data)[ptr];
         if(lengthOctet == 0)
@@ -342,26 +343,20 @@ int printRRRData(const unsigned char* data, unsigned isIp,
     if(currLen + 2 > maxLen)
         errHandling("Received packet is not long enough, probably malfunctioned packet", ERR_BAD_PACKET);            
 
-
     unsigned short dataLen = ntohs(((unsigned short*)(data))[0]);
+
+    if(currLen + dataLen + 2 > maxLen)
+        errHandling("Received packet is not long enough, probably malfunctioned packet", ERR_BAD_PACKET);    
 
     if(isIp)
     {
         // +2 is offset after datalen
        if(isIp == RRType_A)
         {
-            // +4 for size of ipv4 in bytes
-            if(currLen + 4 > maxLen)
-                errHandling("Received packet is not long enough, probably malfunctioned packet", ERR_BAD_PACKET);  
-
             printIPv4(((uint32_t*) (data + 2))[0], addr2Print);
         }
         else
         {
-            // +16 for size of ipv4 in bytes
-            if(currLen + 16 > maxLen)
-                errHandling("Received packet is not long enough, probably malfunctioned packet", ERR_BAD_PACKET);    
-
             printIPv6((uint32_t*) (data + 2), addr2Print);
         }
     }
@@ -375,7 +370,7 @@ int printRRRData(const unsigned char* data, unsigned isIp,
 /**
  * @brief Prints Time To Live onto standard output
  * 
- * @param data yte array containing raw packet starting at TTL position
+ * @param data Byte array containing raw packet starting at TTL position
  */
 void printRRTTL(const unsigned char* data)
 {
@@ -518,7 +513,7 @@ void ipv4Dissector(const unsigned char* packet, bool verbose)
  * @brief Prints IPv4 address in correct endian
  * 
  * @param address IPv4 address
- * @param addr2Print buffer to which will the IPv4 address stored, if NULL 
+ * @param addr2Print Buffer to which will the IPv4 address stored, if NULL 
  * address will be printed onto stdout
  */
 void printIPv4(u_int32_t address, Buffer* addr2Print)
@@ -549,7 +544,7 @@ void printIPv4(u_int32_t address, Buffer* addr2Print)
     char tmp[4] = {0};
     for(short i = 24 ; i >= 0 ; i -= 8)
     {
-        
+        // break numerical value into printable chars
         number = (addressCorrected >> i) & 0xFF;
         hundreds = (int) number/100;
         tens = (int) (number%100) / 10;
@@ -588,6 +583,7 @@ void printIPv4(u_int32_t address, Buffer* addr2Print)
  * @brief Dissects IPv6 protocol 
  * 
  * @param packet Pointer to the packet, must start at Internet Protocol
+ * @param verbose Setting if information display is should be detailed or not
  * @return unsigned char Pointer where IP protocol ends, and protocol stars
  */
 void ipv6Dissector(const unsigned char* packet, bool verbose)
@@ -615,7 +611,9 @@ void ipv6Dissector(const unsigned char* packet, bool verbose)
 /**
  * @brief Prints IPv6 address in correct system endian
  * 
- * @param address pointer to u_int32_t[4]   
+ * @param address Pointer to u_int32_t[4] containing IPv6 address
+ * @param addr2Print Pointer to Buffer where IPv6 will be stored, if NULL
+ * stdout will be used instead
  */
 void printIPv6(u_int32_t* address, Buffer* addr2Print)
 {
