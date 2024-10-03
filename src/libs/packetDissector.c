@@ -224,6 +224,7 @@ void rrDissector(const unsigned char* packet, Config* config, size_t maxLen)
             if(config->verbose)
                 bufferPrint(addr2Print, 1); 
 
+            // ignore unknown resource record types
             if(!isValidTypeOrClass(resourceRecords + ptr))
                 continue;
 
