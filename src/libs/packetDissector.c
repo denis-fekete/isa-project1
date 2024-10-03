@@ -224,9 +224,14 @@ void rrDissector(const unsigned char* packet, Config* config, size_t maxLen)
             if(config->verbose)
                 bufferPrint(addr2Print, 1); 
 
+            if(!isValidTypeOrClass(resourceRecords + ptr))
+                continue;
+
             if(config->verbose)
+            {
                 // +4 to get to the ttl
                 printRRTTL(resourceRecords + ptr + 4);
+            }
 
             if(config->verbose)
                 // +2 to get to the class
@@ -273,6 +278,46 @@ void rrDissector(const unsigned char* packet, Config* config, size_t maxLen)
 
 }
 
+/**
+ * @brief Checks if new query contains supported type of class
+ * 
+ * @param data Byte array containing raw packet data starting at Type section 
+ * DNS message
+ * @return true Is valid/known message type/class
+ * @return false Is not valid/known message type/class
+ */
+bool isValidTypeOrClass(const unsigned char* data)
+{
+    bool valid = false;
+    // no need for offset
+    switch (ntohs(((unsigned short*)(data))[0]))
+    {
+        case RRType_A:
+        case RRType_AAAA:
+        case RRType_NS:
+        case RRType_MX:
+        case RRType_SOA:
+        case RRType_CNAME:
+        case RRType_SRV:
+            valid = true;
+            break;
+    }
+
+    if(valid == false)
+        return false;
+
+    // +2 is offset after name to the class
+    switch (ntohs(((unsigned short*)(data + 2))[0]))
+    {
+        case RRClass_IN:
+            valid = true;
+            break;
+        default:
+            valid = false;            
+    }
+
+    return valid;
+}
 #undef IS_IP
 
 /**
@@ -297,7 +342,9 @@ unsigned printRRName(const unsigned char* data, const unsigned char* dataWOptr,
         const unsigned char lengthOctet = (data)[ptr];
         if(lengthOctet == 0)
         {
-            bufferSetUsed(addr2Print, addr2Print->used - 1);
+            if(addr2Print->used > 0)
+                bufferSetUsed(addr2Print, addr2Print->used - 1);
+
             ptr++;
             return ptr;
         }
@@ -387,7 +434,7 @@ void printRRTTL(const unsigned char* data)
 int printRRType(const unsigned char* data)
 {
     switch (ntohs(((unsigned short*)(data))[0]))
-        {
+    {
         case RRType_A:      printf("A ");
             return RRType_A;
             break;
@@ -395,21 +442,23 @@ int printRRType(const unsigned char* data)
             return RRType_AAAA;
             break; 
         case RRType_NS:     printf("NS ");
+            return RRType_NS;
             break; 
         case RRType_MX:     printf("MX ");
+            return RRType_MX;
             break; 
         case RRType_SOA:    printf("SOA ");
+            return RRType_SOA;
             break; 
         case RRType_CNAME:  printf("CNAME ");
+            return RRType_CNAME;
             break; 
         case RRType_SRV:    printf("SRV ");
+            return RRType_SRV;
             break; 
-        default:
-            debugPrint(stdout, "Bad RR Type: %u \n", ntohs(((unsigned short*)(data))[0]));
-            errHandling("Unknown Resource Record Type", ERR_UNKNOWN_PROTOCOL);
-            break;
-        }
-    return 0;
+    }
+
+    return RRType_UNKNOWN;
 }
 
 
@@ -423,16 +472,11 @@ int printRRClass(const unsigned char* data)
 {
     switch (ntohs(((unsigned short*)(data))[0]))
     {
-        case 0x0001: printf(" IN ");
-            return 1;
+        case RRClass_IN: printf(" IN ");
+            return RRClass_IN;
             break;
-        default:
-            debugPrint(stdout, "Bad RR Class: %u \n", ntohs(((unsigned short*)(data))[0]));
-            errHandling("Unknown Resource Record Class", ERR_UNKNOWN_PROTOCOL);
-            break;
+        default: return RRType_UNKNOWN;
     }
-
-    return 0;
 }
 
 
