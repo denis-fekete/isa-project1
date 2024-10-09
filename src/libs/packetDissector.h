@@ -56,6 +56,33 @@
 #define RRClass_IN 0x0001
 #define RRClass_UNKNOWN 0x0000
 
+#define TTL_LEN 4
+#define CLASS_LEN 2
+#define TYPE_LEN 2
+#define MX_PREFERENCE_LEN 2
+#define RDATALEN_LEN 2
+
+typedef const unsigned char* packet_t;
+
+#define IS_IP() (type == RRType_A || type == RRType_AAAA)
+
+#define LEN_CHECK(var)                  \
+    if(maxLen < ptr + var)              \
+    {                                   \
+        errHandling("Received packet is not long enough, probably malfunctioned packet", ERR_BAD_PACKET); \
+    }
+
+#define VERBOSE(arg) if(config->verbose){arg;}
+
+#define STORE_DOMAIN(arg) if(config->domainsFile->data != NULL && (type == RRType_A || type == RRType_AAAA || type == RRType_NS)) {arg;} 
+
+#define STORE_TRANSLATIONS(arg) if(config->domainsFile->data != NULL && !((type == RRType_A || type == RRType_AAAA))) {arg;} 
+
+#define PACKET_2_SHORT(packet) ((unsigned short*)(packet))[0]
+
+#define PACKET_2_UINT(packet) ((unsigned*)(packet))[0]
+
+
 typedef struct EthernetHeader
 {
     // destination address
@@ -90,16 +117,7 @@ typedef struct DNSHeader
  * @param config Pointer to the Config structure containing pointers to the 
  * "global" variables and program mode
  */
-void frameDissector(const unsigned char* packet, size_t length, Config* config);
-
-
-/**
- * @brief Dissects IPv4 protocol 
- * 
- * @param packet Pointer to the packet, must start at Internet Protocol
- * @return unsigned char Pointer where IP protocol ends, and protocol stars
- */
-u_int16_t uchars2uint16(unsigned char* value);
+void frameDissector(packet_t packet, size_t length, Config* config);
 
 
 // ----------------------------------------------------------------------------
@@ -111,14 +129,14 @@ u_int16_t uchars2uint16(unsigned char* value);
  * 
  * @param packet Byte array containing raw packet data
  */
-void dnsDissector(const unsigned char* packet);
+void dnsDissector(packet_t packet);
 
 /**
  * @brief Prints DNS information 
  * 
  * @param packet Byte array containing raw packet, must start at RDATA
  */
-void verboseDNSDissector(const unsigned char* packet);
+void verboseDNSDissector(packet_t packet);
 
 /**
  * @brief Dissects DNS packet into parts and prints relevant information
@@ -127,7 +145,7 @@ void verboseDNSDissector(const unsigned char* packet);
  * @param config Pointer to configuration structure that holds information about what should be displayed
  * @param maxLen Maximum allowed length of packet
  */
-void rrDissector(const unsigned char* packet, Config* config, size_t maxLen);
+void rrDissector(packet_t packet, Config* config, size_t maxLen);
 
 /**
  * @brief Checks if new query contains supported type of class
@@ -137,7 +155,7 @@ void rrDissector(const unsigned char* packet, Config* config, size_t maxLen);
  * @return true Is valid/known message type/class
  * @return false Is not valid/known message type/class
  */
-bool isValidTypeOrClass(const unsigned char* data);
+bool isValidTypeOrClass(packet_t data);
 
 /**
  * @brief Stores correct domain name into Buffer
@@ -149,7 +167,7 @@ bool isValidTypeOrClass(const unsigned char* data);
  * @param maxLen Maximum allowed length of packet
  * @return int Return length of NAME segment
  */
-unsigned printRRName(const unsigned char* data, const unsigned char* dataWOptr, 
+unsigned handleRRName(packet_t data, packet_t dataWOptr, 
                         Buffer* addr2Print, size_t currLen, size_t maxLen);
 
 
@@ -165,16 +183,39 @@ unsigned printRRName(const unsigned char* data, const unsigned char* dataWOptr,
  * @return int Return length of RDATA segment
  */
 
-int printRRRData(const unsigned char* data, unsigned isIp, 
-                    const unsigned char* dataWOptr, Buffer* addr2Print, 
+int handleRRRData(packet_t data, unsigned isIp, 
+                    packet_t dataWOptr, Buffer* addr2Print, 
                     size_t currLen, size_t maxLen);
+
+/**
+ * @brief Handles correct printing of SRV packets
+ * @param data Byte array containing raw packet, must start at RDATA
+ * @param type Sign if A or AAAA type is detected (this will be IP address)
+ * @param dataWOptr Byte array that starts at DNS part of packet (without offset to RDATA)
+ * @param bufferPtr Buffer to which characters will be stored into
+ * @param currLen Current length of packet
+ * @param maxLen Maximum allowed length of packet
+ */
+void handleSRV(packet_t data, packet_t dataWOptr, Buffer* bufferPtr, size_t currLen, size_t maxLen);
+
+/**
+ * @brief Handles correct printing of SOA packets
+ * 
+ * @param data Byte array containing raw packet, must start at RDATA
+ * @param type Sign if A or AAAA type is detected (this will be IP address)
+ * @param dataWOptr Byte array that starts at DNS part of packet (without offset to RDATA)
+ * @param bufferPtr Buffer to which characters will be stored into
+ * @param currLen Current length of packet
+ * @param maxLen Maximum allowed length of packet
+ */
+void handleSOA(packet_t data, packet_t dataWOptr, Buffer* bufferPtr, size_t currLen, size_t maxLen);
 
 /**
  * @brief Prints Time To Live onto standard output
  * 
  * @param data yte array containing raw packet starting at TTL position
  */
-void printRRTTL(const unsigned char* data);
+void handleRRTTL(packet_t data);
 
 /**
  * @brief Prints Resource Record Type onto standard ouput 
@@ -182,7 +223,7 @@ void printRRTTL(const unsigned char* data);
  * @param data Byte array containing raw packet starting at Type position
  * @return int Returns detected type
  */
-int printRRType(const unsigned char* data);
+int handleRRType(packet_t data);
 
 /**
  * @brief Prints Resource Record Class onto standard ouput 
@@ -190,7 +231,7 @@ int printRRType(const unsigned char* data);
  * @param data Byte array containing raw packet starting at Class position
  * @return int Returns detected class
  */
-int printRRClass(const unsigned char* data);
+int handleRRClass(packet_t data);
 
 /**
  * @brief Dissector of IPv4 protocol
@@ -199,7 +240,7 @@ int printRRClass(const unsigned char* data);
  * @param packet Pointer to the packet
  * @param length Maximum length that you can read
  */
-void ipv4ProtocolDissector(unsigned char protocol, const unsigned char* packet, size_t length);
+void ipv4ProtocolDissector(unsigned char protocol, packet_t packet, size_t length);
 
 // ----------------------------------------------------------------------------
 // IPv4 and IPv6
@@ -210,14 +251,14 @@ void ipv4ProtocolDissector(unsigned char protocol, const unsigned char* packet, 
  * 
  * @param packet Byte array containing raw packet data with offset to udp header 
  */
-void udpDissector(const unsigned char* packet);
+void udpDissector(packet_t packet);
 
 /**
  * @brief Dissects IPv4 protocol 
  * 
  * @param packet Pointer to the packet, must start at Internet Protocol
  */
-void ipv4Dissector(const unsigned char* packet, bool verbose);
+void ipv4Dissector(packet_t packet, bool verbose);
 
 /**
  * @brief Prints IPv4 address in correct endian
@@ -233,7 +274,7 @@ void printIPv4(u_int32_t address, Buffer* addr2Print);
  * 
  * @param packet Pointer to the packet, must start at Internet Protocol
  */
-void ipv6Dissector(const unsigned char* packet, bool verbose);
+void ipv6Dissector(packet_t packet, bool verbose);
 
 /**
  * @brief Prints IPv6 address in correct system endian

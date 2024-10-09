@@ -17,7 +17,7 @@
  * @param config Pointer to the Config structure containing pointers to the 
  * "global" variables and program mode
  */
-void frameDissector(const unsigned char* packet, size_t length, Config* config)
+void frameDissector(packet_t packet, size_t length, Config* config)
 {     
     EthernetHeader* eth;
     eth = (EthernetHeader *) packet;
@@ -28,9 +28,8 @@ void frameDissector(const unsigned char* packet, size_t length, Config* config)
         errHandling("Received packet is not long enough, probably malfunctioned packet", ERR_BAD_PACKET);
 
 
-    unsigned short etherType = ntohs(((unsigned short*) (eth->etherType))[0]);
-    if(etherType != uchars2uint16(&(eth->etherType[0])))
-        debugPrint(stdout, "\n\nZLE!!\n\n");
+    // unsigned short etherType = ntohs(((unsigned short*) (eth->etherType))[0]);
+    unsigned short etherType = ntohs( PACKET_2_SHORT(eth->etherType) );
     switch( etherType )
     {
         case ETH_TYPE_IPV4:
@@ -76,20 +75,6 @@ void frameDissector(const unsigned char* packet, size_t length, Config* config)
     rrDissector(packet + offset, config, length - offset - sizeof(struct DNSHeader));
 }
 
-
-/**
- * @brief Breaks unsigned char into 16bit unsigned integer (unsigned short int)
- * 
- * @param value Input array containing value to be broken to unsigned integer
- * @return u_int16_t 
- */
-u_int16_t uchars2uint16(unsigned char* value)
-{
-    //                  LOW         HIGH
-    return (u_int16_t) (value[1] +  (value[0] << 8)); 
-}
-
-
 // ----------------------------------------------------------------------------
 // IPv4 and IPv6
 // ----------------------------------------------------------------------------
@@ -100,7 +85,7 @@ u_int16_t uchars2uint16(unsigned char* value)
  * 
  * @param packet Byte array containing raw packet
  */
-void dnsDissector(const unsigned char* packet)
+void dnsDissector(packet_t packet)
 {
     DNSHeader* dns = (struct DNSHeader*) packet;
     unsigned short correctedFlags = ntohs(dns->flags);
@@ -117,7 +102,7 @@ void dnsDissector(const unsigned char* packet)
  * 
  * @param packet Byte array containing raw packet, must start at RDATA
  */
-void verboseDNSDissector(const unsigned char* packet)
+void verboseDNSDissector(packet_t packet)
 {
     DNSHeader* dns = (struct DNSHeader*) packet;
     unsigned short correctedFlags = ntohs(dns->flags);
@@ -136,14 +121,67 @@ void verboseDNSDissector(const unsigned char* packet)
     printf("RCODE=%u\n",     correctedFlags & RCODE);
 }
 
-#define IS_IP() (type == RRType_A || type == RRType_AAAA)
+void handleMXPreference(packet_t packet)
+{
+    // +2 is because first is data rdatalen (2 bytes) and then is rdata 
+    // containing mx preference 
+    printf("%hu ", ntohs(PACKET_2_SHORT(packet + 2) ));
+}
 
-#define LEN_CHECK(var)                  \
-    if(maxLen < ptr + var)              \
-    {                                   \
-        errHandling("Received packet is not long enough, probably malfunctioned packet", ERR_BAD_PACKET); \
+unsigned handleOtherSections(packet_t resourceRecords, packet_t packet, Config* config, unsigned ptr, size_t maxLen)
+{
+    Buffer* bufferPtr = config->addressToPrint;
+    unsigned type;
+    unsigned ptrOld = ptr;
+
+    // bufferPtr already contains correct NAME, print it
+    VERBOSE(
+        bufferPrint(bufferPtr, 1);
+        );
+
+    VERBOSE(
+        handleRRTTL(resourceRecords + ptr + TTL_LEN);
+        );
+    VERBOSE(
+        handleRRClass(resourceRecords + ptr + CLASS_LEN);
+        );
+    VERBOSE(
+        type = handleRRType(resourceRecords + ptr);
+        );
+
+    ptr += TTL_LEN + CLASS_LEN + TYPE_LEN;
+    
+    STORE_DOMAIN(
+        domainNameHandler(bufferPtr, config->domainList);
+        );
+    STORE_TRANSLATIONS(
+        translationNameHandler(bufferPtr, config->translationsList, 0);
+        );
+
+    if(type == RRType_MX) {
+        VERBOSE(
+            handleMXPreference(resourceRecords + ptr);
+        );
     }
 
+    bufferClear(bufferPtr);
+    ptr += handleRRRData(resourceRecords + ptr, type, packet, bufferPtr, ptr, maxLen);
+
+    STORE_TRANSLATIONS(
+        translationNameHandler(bufferPtr, config->translationsList, 0);
+        );
+    VERBOSE(
+        bufferPrint(bufferPtr, 1);
+        );
+    STORE_TRANSLATIONS(
+        translationNameHandler(bufferPtr, config->translationsList, 0);
+        );
+    
+    bufferClear(bufferPtr);
+    VERBOSE(printf("\n"));
+
+    return ptr - ptrOld;
+}
 
 /**
  * @brief Dissects DNS packet into parts and prints relevant information
@@ -152,13 +190,13 @@ void verboseDNSDissector(const unsigned char* packet)
  * @param config Pointer to configuration structure that holds information about what should be displayed
  * @param maxLen Maximum allowed length of packet
  */
-void rrDissector(const unsigned char* packet, Config* config, size_t maxLen)
+void rrDissector(packet_t packet, Config* config, size_t maxLen)
 {
-    Buffer* addr2Print = config->addressToPrint;
+    Buffer* bufferPtr = config->addressToPrint;
 
     // dns header to know number of queries to be expected
     DNSHeader* dns = (struct DNSHeader*) packet;
-    const unsigned char* resourceRecords = packet + sizeof(struct DNSHeader);
+    packet_t resourceRecords = packet + sizeof(struct DNSHeader);
     
     // pointer in packet byte array, offset...
     unsigned ptr = 0;
@@ -168,23 +206,23 @@ void rrDissector(const unsigned char* packet, Config* config, size_t maxLen)
         if(config->verbose)
             printf("\n[Question Section]\n");
 
-        ptr += printRRName(resourceRecords, packet, addr2Print, ptr, maxLen);     
+        ptr += handleRRName(resourceRecords, packet, bufferPtr, ptr, maxLen);     
 
         LEN_CHECK(0);
 
         if(config->domainsFile->data != NULL)
-            domainNameHandler(addr2Print, config->domainList);
+            domainNameHandler(bufferPtr, config->domainList);
 
         if(config->verbose)
-            bufferPrint(addr2Print, 1);
-        bufferClear(addr2Print);
+            bufferPrint(bufferPtr, 1);
+        bufferClear(bufferPtr);
 
         if(config->verbose)
             // +2 for two zero bytes after name
-            printRRClass(resourceRecords + ptr + 2);
+            handleRRClass(resourceRecords + ptr + 2);
 
         if(config->verbose)
-            printRRType(resourceRecords + ptr);
+            handleRRType(resourceRecords + ptr);
         ptr += 4; // +2 for the type, +2 for the type
 
         if(config->verbose)
@@ -192,7 +230,6 @@ void rrDissector(const unsigned char* packet, Config* config, size_t maxLen)
     }
 
     unsigned repeat = 0;
-    unsigned short type;
     for(unsigned i = 0; i < 3; i++)
     {
         switch(i)
@@ -216,68 +253,21 @@ void rrDissector(const unsigned char* packet, Config* config, size_t maxLen)
         }
         for(unsigned i = 0; i < repeat; i++)
         {
-            ptr += printRRName(resourceRecords+ptr, packet, addr2Print, ptr, maxLen);
+            ptr += handleRRName(resourceRecords+ptr, packet, bufferPtr, ptr, maxLen);
 
             // +4 for ttl, +2 for class, +2 for type
             LEN_CHECK(8);
-
-            if(config->verbose)
-                bufferPrint(addr2Print, 1); 
 
             // ignore unknown resource record types
             if(!isValidTypeOrClass(resourceRecords + ptr))
                 continue;
 
-            if(config->verbose)
-            {
-                // +4 to get to the ttl
-                printRRTTL(resourceRecords + ptr + 4);
-            }
-
-            if(config->verbose)
-                // +2 to get to the class
-                printRRClass(resourceRecords + ptr + 2);
-
-            if(config->verbose)
-                type = printRRType(resourceRecords + ptr);
-
-            ptr += 8; // +4 for ttl, +2 for class, +2 for type
-            
-            // check if capturing domain names is enabled, if yes capture them
-            // first time for name
-            if(config->domainsFile->data != NULL)
-                domainNameHandler(addr2Print, config->domainList);
-            
-            // check if capturing translation is enabled, if yes capture them
-            // first store domain name
-            if(config->translationsFile->data != NULL && IS_IP())
-                translationNameHandler(addr2Print, config->translationsList, 0);
-
-            bufferClear(addr2Print);
-
-            ptr += printRRRData(resourceRecords + ptr, type, packet, addr2Print, ptr, maxLen);
-
-            // check if capturing domain names is enabled, if yes capture them
-            // second time for rdata
-            if(config->domainsFile->data != NULL && !(IS_IP()))
-                domainNameHandler(addr2Print, config->domainList);
-
-            if(config->verbose)
-                bufferPrint(addr2Print, 1);
-
-            // check if capturing translation is enabled, if yes capture them
-            // second store translated ip
-            if(config->translationsFile->data != NULL && IS_IP())
-                translationNameHandler(addr2Print, config->translationsList, 1);
-
-            bufferClear(addr2Print);
-            
-            if(config->verbose)
-                printf("\n");
+            ptr += handleOtherSections(resourceRecords, packet, config, ptr, maxLen);
         }
     }
 
 }
+
 
 /**
  * @brief Checks if new query contains supported type of class
@@ -287,11 +277,12 @@ void rrDissector(const unsigned char* packet, Config* config, size_t maxLen)
  * @return true Is valid/known message type/class
  * @return false Is not valid/known message type/class
  */
-bool isValidTypeOrClass(const unsigned char* data)
+bool isValidTypeOrClass(packet_t data)
 {
     bool valid = false;
     // no need for offset
-    switch (ntohs(((unsigned short*)(data))[0]))
+    switch (ntohs( PACKET_2_SHORT(data) ))
+    // switch (ntohs(((unsigned short*)(data))[0]))
     {
         case RRType_A:
         case RRType_AAAA:
@@ -308,7 +299,8 @@ bool isValidTypeOrClass(const unsigned char* data)
         return false;
 
     // +2 is offset after name to the class
-    switch (ntohs(((unsigned short*)(data + 2))[0]))
+    switch (ntohs( PACKET_2_SHORT(data + 2) ))
+    // switch (ntohs(((unsigned short*)(data + 2))[0]))
     {
         case RRClass_IN:
             valid = true;
@@ -319,32 +311,31 @@ bool isValidTypeOrClass(const unsigned char* data)
 
     return valid;
 }
-#undef IS_IP
 
 /**
  * @brief Stores correct domain name into Buffer
  * 
  * @param data Byte array containing raw packet, must start at RDATA
  * @param dataWOptr Byte array that starts at DNS part of packet (without offset to RDATA)
- * @param addr2Print Buffer to which characters will be stored into
+ * @param bufferPtr Buffer to which characters will be stored into
  * @param currLen Current length of packet
  * @param maxLen Maximum allowed length of packet
  * @return int Return length of NAME segment
  */
-unsigned printRRName(const unsigned char* data, const unsigned char* dataWOptr, 
-                        Buffer* addr2Print, size_t currLen, size_t maxLen)
+unsigned handleRRName(packet_t data, packet_t dataWOptr, 
+                        Buffer* bufferPtr, size_t currLen, size_t maxLen)
 {
     unsigned ptr = 0;
     for(;1;)
     {
         if(ptr + currLen > maxLen)
-            errHandling("Received packet is not long enough, probably malfunctioned packet (in printRRName)", ERR_BAD_PACKET);            
+            errHandling("Received packet is not long enough, probably malfunctioned packet (in handleRRName)", ERR_BAD_PACKET);            
 
         const unsigned char lengthOctet = (data)[ptr];
         if(lengthOctet == 0)
         {
-            if(addr2Print->used > 0)
-                bufferSetUsed(addr2Print, addr2Print->used - 1);
+            if(bufferPtr->used > 0)
+                bufferSetUsed(bufferPtr, bufferPtr->used - 1);
 
             ptr++;
             return ptr;
@@ -353,7 +344,7 @@ unsigned printRRName(const unsigned char* data, const unsigned char* dataWOptr,
         {
             const unsigned short jumpPtr = ((data[ptr] << 8) | data[ptr + 1]) & 0x3fff;
             
-            printRRName(dataWOptr + jumpPtr, dataWOptr, addr2Print, currLen + ptr, maxLen);
+            handleRRName(dataWOptr + jumpPtr, dataWOptr, bufferPtr, currLen + ptr, maxLen);
 
             // return ptr + 2 for the jump pointer
             return ptr + 2;
@@ -363,9 +354,9 @@ unsigned printRRName(const unsigned char* data, const unsigned char* dataWOptr,
 
         for(unsigned char i = 0; i < lengthOctet; i++, ptr++)
         {
-            bufferAddChar(addr2Print, (data)[ptr]);
+            bufferAddChar(bufferPtr, (data)[ptr]);
         }
-        bufferAddChar(addr2Print, '.');
+        bufferAddChar(bufferPtr, '.');
     }
     
     return 0;
@@ -376,51 +367,122 @@ unsigned printRRName(const unsigned char* data, const unsigned char* dataWOptr,
  * @brief Stores correct IP address or domain name into Buffer
  * 
  * @param data Byte array containing raw packet, must start at RDATA
- * @param isIp Sign if A or AAAA type is detected (this will be IP address)
+ * @param type Sign if A or AAAA type is detected (this will be IP address)
  * @param dataWOptr Byte array that starts at DNS part of packet (without offset to RDATA)
- * @param addr2Print Buffer to which characters will be stored into
+ * @param bufferPtr Buffer to which characters will be stored into
  * @param currLen Current length of packet
  * @param maxLen Maximum allowed length of packet
  * @return int Return length of RDATA segment
  */
-
-int printRRRData(const unsigned char* data, unsigned isIp, 
-                    const unsigned char* dataWOptr, Buffer* addr2Print, 
+int handleRRRData(packet_t data, unsigned type, 
+                    packet_t dataWOptr, Buffer* bufferPtr, 
                     size_t currLen, size_t maxLen)
 {
     if(currLen + 2 > maxLen)
         errHandling("Received packet is not long enough, probably malfunctioned packet", ERR_BAD_PACKET);            
 
-    unsigned short dataLen = ntohs(((unsigned short*)(data))[0]);
+    // unsigned short dataLen = ntohs(((unsigned short*)(data))[0]);
+    unsigned short dataLen = ntohs( PACKET_2_SHORT(data) );
 
     if(currLen + dataLen + 2 > maxLen)
         errHandling("Received packet is not long enough, probably malfunctioned packet", ERR_BAD_PACKET);    
 
-    if(isIp)
+    switch (type)
     {
-        // +2 is offset after datalen
-       if(isIp == RRType_A)
-        {
-            printIPv4(((uint32_t*) (data + 2))[0], addr2Print);
-        }
-        else
-        {
-            printIPv6((uint32_t*) (data + 2), addr2Print);
-        }
+    case RRType_A:
+            printIPv4(((uint32_t*) (data + 2))[0], bufferPtr);
+        break;
+    case RRType_AAAA:
+            printIPv6((uint32_t*) (data + 2), bufferPtr);
+        break;
+    case RRType_MX:
+        handleRRName(data + RDATALEN_LEN + MX_PREFERENCE_LEN, dataWOptr, bufferPtr, currLen, maxLen);
+        break;
+    case RRType_SOA:;
+        handleSOA(data, dataWOptr, bufferPtr, currLen, maxLen);
+        break;
+    case RRType_SRV:;
+        handleSRV(data, dataWOptr, bufferPtr, currLen, maxLen);
+        break;
+    default:
+        handleRRName(data + RDATALEN_LEN, dataWOptr, bufferPtr, currLen, maxLen);
+        break;
     }
-    else
-        printRRName(data + 2, dataWOptr, addr2Print, currLen, maxLen);
 
-    return dataLen + 2; // +2 is for the two bytes of dataLen 
+    return dataLen + RDATALEN_LEN; // +2 is for the two bytes of dataLen 
 }
 
+/**
+ * @brief Handles correct printing of SRV packets
+ * @param data Byte array containing raw packet, must start at RDATA
+ * @param type Sign if A or AAAA type is detected (this will be IP address)
+ * @param dataWOptr Byte array that starts at DNS part of packet (without offset to RDATA)
+ * @param bufferPtr Buffer to which characters will be stored into
+ * @param currLen Current length of packet
+ * @param maxLen Maximum allowed length of packet
+ */
+void handleSRV(packet_t data, packet_t dataWOptr, Buffer* bufferPtr, size_t currLen, size_t maxLen)
+{
+        unsigned ptr = RDATALEN_LEN;
+        // priority (length 2 octets unsigned short)
+        printf("%u ", ntohs( PACKET_2_SHORT(data + ptr) ));
+        ptr += 2;
+
+        // weight (length 2 octets unsigned short)
+        printf("%u ", ntohs( PACKET_2_SHORT(data + ptr) ));
+        ptr += 2;
+
+        // port (length 2 octets unsigned short)
+        printf("%u ", ntohs( PACKET_2_SHORT(data + ptr) ));
+        ptr += 2;
+
+        handleRRName(data + ptr, dataWOptr, bufferPtr, currLen, maxLen);
+}
+
+/**
+ * @brief Handles correct printing of SOA packets
+ * @param data Byte array containing raw packet, must start at RDATA
+ * @param type Sign if A or AAAA type is detected (this will be IP address)
+ * @param dataWOptr Byte array that starts at DNS part of packet (without offset to RDATA)
+ * @param bufferPtr Buffer to which characters will be stored into
+ * @param currLen Current length of packet
+ * @param maxLen Maximum allowed length of packet
+ */
+void handleSOA(packet_t data, packet_t dataWOptr, Buffer* bufferPtr, size_t currLen, size_t maxLen)
+{
+    // primary name server
+    unsigned ptr = RDATALEN_LEN; 
+    ptr += handleRRName(data + ptr, dataWOptr, bufferPtr, currLen, maxLen);
+    // responsible authority mailbox
+    ptr += handleRRName(data + ptr, dataWOptr, bufferPtr, currLen, maxLen);
+
+    // serial number (length 4 octets = unsigned int)
+    printf("%u ", ntohl( PACKET_2_UINT(data + ptr) ));
+    ptr += 4;
+
+    // refresh interval (length 4 octets = unsigned int)
+    printf("%u ", ntohl( PACKET_2_UINT(data + ptr) ));
+    ptr += 4;
+
+    // retry interval (length 4 octets = unsigned int)
+    printf("%u ", ntohl( PACKET_2_UINT(data + ptr) ));
+    ptr += 4;
+
+    // expire interval (length 4 octets = unsigned int)
+    printf("%u ", ntohl( PACKET_2_UINT(data + ptr) ));
+    ptr += 4;
+
+    // minimum ttl (length 4 octets = unsigned int)
+    printf("%u ", ntohl( PACKET_2_UINT(data + ptr) ));
+    ptr += 4;
+}
 
 /**
  * @brief Prints Time To Live onto standard output
  * 
  * @param data Byte array containing raw packet starting at TTL position
  */
-void printRRTTL(const unsigned char* data)
+void handleRRTTL(packet_t data)
 {
     printf(" %lu", (unsigned long)ntohl(((unsigned long*)(data))[0]));
 }
@@ -432,9 +494,10 @@ void printRRTTL(const unsigned char* data)
  * @param data Byte array containing raw packet starting at Type position
  * @return int Returns detected type
  */
-int printRRType(const unsigned char* data)
+int handleRRType(packet_t data)
 {
-    switch (ntohs(((unsigned short*)(data))[0]))
+    // switch (ntohs(((unsigned short*)(data))[0]))
+    switch (ntohs( PACKET_2_SHORT(data) ))
     {
         case RRType_A:      printf("A ");
             return RRType_A;
@@ -469,9 +532,9 @@ int printRRType(const unsigned char* data)
  * @param data Byte array containing raw packet starting at Class position
  * @return int Returns detected class
  */
-int printRRClass(const unsigned char* data)
+int handleRRClass(packet_t data)
 {
-    switch (ntohs(((unsigned short*)(data))[0]))
+    switch (ntohs( PACKET_2_SHORT(data) ))
     {
         case RRClass_IN: printf(" IN ");
             return RRClass_IN;
@@ -488,7 +551,7 @@ int printRRClass(const unsigned char* data)
  * @param packet Pointer to the packet
  * @param length Maximum length that you can read
  */
-void ipv4ProtocolDissector(unsigned char protocol, const unsigned char* packet, size_t length)
+void ipv4ProtocolDissector(unsigned char protocol, packet_t packet, size_t length)
 {
     if(length){}
     switch (protocol)
@@ -514,7 +577,7 @@ void ipv4ProtocolDissector(unsigned char protocol, const unsigned char* packet, 
  * 
  * @param packet Byte array containing raw packet data with offset to udp header 
  */
-void udpDissector(const unsigned char* packet)
+void udpDissector(packet_t packet)
 {
     struct udphdr* udp = (struct udphdr*) packet; 
 
@@ -529,7 +592,7 @@ void udpDissector(const unsigned char* packet)
  * @param packet Pointer to the packet, must start at Internet Protocol
  * @param verbose Setting if information display is should be detailed or not
  */
-void ipv4Dissector(const unsigned char* packet, bool verbose)
+void ipv4Dissector(packet_t packet, bool verbose)
 {
     struct iphdr* ipv4 = (struct iphdr*) packet;
 
@@ -558,15 +621,15 @@ void ipv4Dissector(const unsigned char* packet, bool verbose)
  * @brief Prints IPv4 address in correct endian
  * 
  * @param address IPv4 address
- * @param addr2Print Buffer to which will the IPv4 address stored, if NULL 
+ * @param bufferPtr Buffer to which will the IPv4 address stored, if NULL 
  * address will be printed onto stdout
  */
-void printIPv4(u_int32_t address, Buffer* addr2Print)
+void printIPv4(u_int32_t address, Buffer* bufferPtr)
 {
     u_int32_t addressCorrected = ntohl(address);
 
 
-    if(addr2Print == NULL)
+    if(bufferPtr == NULL)
     {
         for(short i = 24 ; i >= 0 ; i -= 8)
         {
@@ -613,11 +676,11 @@ void printIPv4(u_int32_t address, Buffer* addr2Print)
         
         tmp[number] = 0;
 
-        bufferAddString(addr2Print, tmp);
+        bufferAddString(bufferPtr, tmp);
 
         if(i != 0)
         {
-            bufferAddChar(addr2Print, '.');
+            bufferAddChar(bufferPtr, '.');
         }
     }
 
@@ -631,7 +694,7 @@ void printIPv4(u_int32_t address, Buffer* addr2Print)
  * @param verbose Setting if information display is should be detailed or not
  * @return unsigned char Pointer where IP protocol ends, and protocol stars
  */
-void ipv6Dissector(const unsigned char* packet, bool verbose)
+void ipv6Dissector(packet_t packet, bool verbose)
 {
     struct ip6_hdr* ipv6 = (struct ip6_hdr*) packet;
 
@@ -657,20 +720,20 @@ void ipv6Dissector(const unsigned char* packet, bool verbose)
  * @brief Prints IPv6 address in correct system endian
  * 
  * @param address Pointer to u_int32_t[4] containing IPv6 address
- * @param addr2Print Pointer to Buffer where IPv6 will be stored, if NULL
+ * @param bufferPtr Pointer to Buffer where IPv6 will be stored, if NULL
  * stdout will be used instead
  */
-void printIPv6(u_int32_t* address, Buffer* addr2Print)
+void printIPv6(u_int32_t* address, Buffer* bufferPtr)
 {
     char buffer[40];
     inet_ntop(AF_INET6, address, buffer, 40);
     
-    if(addr2Print == NULL)
+    if(bufferPtr == NULL)
     {
         printf("%s", buffer);
     }
     else
     {
-        bufferAddString(addr2Print, buffer);
+        bufferAddString(bufferPtr, buffer);
     }
 }
