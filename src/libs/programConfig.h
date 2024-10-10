@@ -67,21 +67,17 @@ typedef struct ProgramConfiguration
 /**
  * @brief Sets default values to ProgramConfiguration(Config)
  * 
- * @param config Pointer to the program configurations. Must be allocated
+ * @param config Pointer to the Config structure that holds program settings to 
+ * set desired behaviour of program and also allocated all allocated variables.
+ * Must be allocated
  */
 void setupConfig(Config* config);
 
 /**
- * @brief Prints current configuration to stdout
- * 
- * @param config 
- */
-void printConfig(Config* config);
-
-/**
  * @brief Destroys and frees all values inside Config
  * 
- * @param config pointer to Config to be destroyed
+ * @param config Pointer to the Config structure that holds program settings to 
+ * set desired behaviour of program and also allocated all allocated variables
  */
 void destroyConfig(Config* config);
 

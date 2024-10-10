@@ -1,14 +1,47 @@
 /**
  * @file pcapHandler.c
  * @author Denis Fekete (xfeket01@vutbr.cz)
- * @brief 
+ * @brief Source code for pcapHandler.h that handles setting up traffic 
+ * capturing mechanism using libpcap library 
  * 
- * @copyright Copyright (c) 2024
+ * Main source of information: www.tcpdump.org
  * 
+ * @copyright BSD 
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 
+ *   1. Redistributions of source code must retain the above copyright
+ *      notice, this list of conditions and the following disclaimer.
+ *   2. Redistributions in binary form must reproduce the above copyright
+ *      notice, this list of conditions and the following disclaimer in
+ *      the documentation and/or other materials provided with the
+ *      distribution.
+ *   3. The names of the authors may not be used to endorse or promote
+ *      products derived from this software without specific prior
+ *      written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+ * 
+ * License from: https://github.com/the-tcpdump-group/libpcap
  */
 
 #include "pcapHandler.h"
 
+/**
+ * @brief Opens offline file from which a data traffic will be read
+ * 
+ * @param config Pointer to the Config structure that holds program settings to 
+ * set desired behaviour of program and also allocated all allocated variables
+ * @return pcap_t* Returns handle to which is applied filter and then used for
+ * reading captured data
+ * 
+ * @author Tim Carstens
+ * Source: https://www.tcpdump.org/manpages/pcap_open_offline.3pcap.html
+ */
 pcap_t* pcapOfflineSetup(Config* config)
 {
     // open file for reading captured packets
@@ -21,6 +54,17 @@ pcap_t* pcapOfflineSetup(Config* config)
     return pcap_fopen_offline(config->cleanup.pcapFile, config->cleanup.pcapErrbuff);
 }
 
+/**
+ * @brief Opens online network interface from which a data traffic will be read
+ * 
+ * @param config Pointer to the Config structure that holds program settings to 
+ * set desired behaviour of program and also allocated all allocated variables
+ * @return pcap_t* Returns handle to which is applied filter and then used for
+ * reading captured data
+ * 
+ * @author Tim Carstens
+ * Source: https://www.tcpdump.org/pcap.html
+ */
 pcap_t* pcapOnlineSetup(Config* config, pcap_if_t** allDevices, pcap_if_t** device)
 {
     // Get list of all devices
@@ -64,7 +108,18 @@ pcap_t* pcapOnlineSetup(Config* config, pcap_if_t** allDevices, pcap_if_t** devi
 }
 
 
-
+/**
+ * @brief Setups PCAP library to correctly capture traffic and set filters to 
+ * accept only relevant internet traffic. 
+ * 
+ * @param config Pointer to the Config structure that holds program settings to 
+ * set desired behaviour of program and also allocated all allocated variables
+ * @param allDevices Pointer to the pointer containing all devices
+ * @return pcap_t* PCAP handle for further working with/reading captured data
+ * 
+ * @author Tim Carstens
+ * Source: https://www.tcpdump.org/pcap.html
+ */
 pcap_t* pcapSetup(Config* config, pcap_if_t** allDevices)
 {
     pcap_t* handle;
@@ -110,6 +165,8 @@ pcap_t* pcapSetup(Config* config, pcap_if_t** allDevices)
     bufferAddChar(&expr, 0);
 
     struct bpf_program fp; // Stuct that holds compiled filter expression
+
+    // Compile the filter
     if(pcap_compile(handle, &fp, expr.data, 0, net) == PCAP_ERROR)
     {
         fprintf(stderr, "ERR: Couldn't parse filter %s: %s\n", expr.data, pcap_geterr(handle));

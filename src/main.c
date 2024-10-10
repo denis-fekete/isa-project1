@@ -21,9 +21,8 @@
 #include "signal.h"
 
 Config* globalConfig;
-bool sigintTriggered;
 
-void* threadFunction(void* vargp)
+void* packetLooper(void* vargp)
 {
     Config* config = (Config*)vargp;
 
@@ -33,13 +32,11 @@ void* threadFunction(void* vargp)
     unsigned int packetCounter = 0;
     const unsigned char* packetData;
 
-    while(packetCounter < config->numberOfPackets)
+    while(config != NULL && packetCounter < config->numberOfPackets)
     {
         // short unsigned int tabsCorrected = 0;
         int res =  pcap_next_ex(config->cleanup.handle, &header, &packetData);
         if(!res ) { errHandling("Capturing packet failed!", 99); }
-
-        // Lock mutex to prevent segmentation fault if someone tried to destroy it
 
         if(config->verbose)
             printf("Timestamp: %s\n", getTimestamp(header->ts, config));
@@ -58,10 +55,6 @@ void* threadFunction(void* vargp)
 void sigintHandler(int num)
 {
     if(num) {}
-    sigintTriggered = true;
-
-    // try to lock config, to prevent deleting data while functions are working with it
-    // pthread_mutex_lock(globalConfig->cleanup.configMutex);
     // set number of packets to capture to 0
     globalConfig->numberOfPackets = 0;
 
@@ -81,7 +74,6 @@ int main(int argc, char* argv[])
     setupConfig(config);
     // set globalConfig to be same as local, global is for SIGINT handling
     globalConfig = config;
-    sigintTriggered = false;
 
     // sets SIGINT handling
     signal(SIGINT, sigintHandler);
@@ -92,18 +84,11 @@ int main(int argc, char* argv[])
     // Setup pcap
     config->cleanup.handle = pcapSetup(config, &(config->cleanup.allDevices));
 
-    // Start getting packets in another thread
-    pthread_t thread;
-    pthread_create(&thread, NULL, threadFunction, config);
-    pthread_join(thread, NULL);
+    packetLooper(config);
 
     saveToFiles(config);
 
-    // Close and cleanup
-    if(!sigintTriggered)
-    {    
-        destroyConfig(config);
-    }   
+    destroyConfig(config);
     
     return 0;
 }

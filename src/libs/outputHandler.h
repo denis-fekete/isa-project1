@@ -31,7 +31,8 @@
  * @brief Returns array of characters with correct timestamp in RFC 3339 format
  * 
  * @param tv timestamp
- * @param config pointer to global configuration where string pointer is stored
+ * @param config Pointer to the Config structure that holds program settings to 
+ * set desired behaviour of program and also allocated all allocated variables
  * @return char* 
  */
 char* getTimestamp(struct timeval tv, Config* config);
@@ -58,8 +59,8 @@ void translationNameHandler(Buffer* newEntry, BufferList* list, bool secondPart)
 /**
  * @brief Save domain names and translated ip addresses to the user provided files
  * 
- * @param config Pointer to the Config structure holding data with pointers 
- * to the name files and variables containing captured data
+ * @param config Pointer to the Config structure that holds program settings to 
+ * set desired behaviour of program and also allocated all allocated variables
  */
 void saveToFiles(Config* config);
 

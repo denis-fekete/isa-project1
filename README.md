@@ -3,7 +3,7 @@
 Denis Fekete Denis Fekete ([xfeket01@vutbr.cz](mailto:xfeket01@vutbr.cz))
 
 **Git repository:**
-https://git.fit.vutbr.cz/xfeket01/ipk-project2.git
+https://github.com/denis-fekete/isa-project1
 
 ## Description
 IPK-Sniffer is a program written in C programming language and utilizes [libcap / pcap](https://www.tcpdump.org/) library for sniffing packets from the network. Program works in *promiscuous mode*[^1] and picks up network traffic from the connected network. Program can be set to accept only certain types of protocols (use --help when starting the program). Captured network traffic is then displayed to standard out (stdin).

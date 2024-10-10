@@ -114,8 +114,8 @@ typedef struct DNSHeader
  * 
  * @param packet Byte array containing raw packet data
  * @param length Length of the packet
- * @param config Pointer to the Config structure containing pointers to the 
- * "global" variables and program mode
+ * @param config Pointer to the Config structure that holds program settings to 
+ * set desired behaviour of program and also allocated all allocated variables
  */
 void frameDissector(packet_t packet, size_t length, Config* config);
 
@@ -142,7 +142,8 @@ void verboseDNSDissector(packet_t packet);
  * @brief Dissects DNS packet into parts and prints relevant information
  * 
  * @param packet Packet to be dissected, must be at a start of DNS part of the packet
- * @param config Pointer to configuration structure that holds information about what should be displayed
+ * @param config Pointer to the Config structure that holds program settings to 
+ * set desired behaviour of program and also allocated all allocated variables
  * @param maxLen Maximum allowed length of packet
  */
 void rrDissector(packet_t packet, Config* config, size_t maxLen);

@@ -17,7 +17,9 @@
 /**
  * @brief Sets default values to ProgramConfiguration(Config)
  * 
- * @param config Pointer to the program configurations. Must be allocated
+ * @param config Pointer to the Config structure that holds program settings to 
+ * set desired behaviour of program and also allocated all allocated variables.
+ * Must be allocated
  */
 void setupConfig(Config* config)
 {
@@ -115,24 +117,13 @@ void setupConfig(Config* config)
 /**
  * @brief Destroys and frees all values inside Config
  * 
- * @param config pointer to Config to be destroyed
+ * @param config Pointer to the Config structure that holds program settings to 
+ * set desired behaviour of program and also allocated all allocated variables
  */
 void destroyConfig(Config* config)
 {
-    // FREE_BUFFERS;
-    // FREE_LISTS;
-
-    bufferDestroy(config->interface);
-    free(config->interface);
-    bufferDestroy(config->domainsFile);
-    free(config->domainsFile);
-    bufferDestroy(config->translationsFile);
-    free(config->translationsFile);
-    bufferDestroy(config->addressToPrint);
-    free(config->addressToPrint);
-
-    listDestroy(config->domainList);
-    listDestroy(config->translationsList);
+    FREE_BUFFERS;
+    FREE_LISTS;
 
     config->interface = NULL;
     config->pcapFileName = NULL;
@@ -150,19 +141,4 @@ void destroyConfig(Config* config)
     pcap_freealldevs(config->cleanup.allDevices);
 
     free(config);
-}
-
-/**
- * @brief Prints current configuration to stdout
- * 
- * @param config 
- */
-void printConfig(Config* config)
-{
-    printf("Config options:\n");
-    printf("\tInterface: %s\n", config->interface->data);
-    printf("\tPCAP filename: %s\n", config->pcapFileName->data);
-    printf("\tDomains filename: %s\n", config->domainsFile->data);
-    printf("\tTranslations filename: %s\n", config->translationsFile->data);
-    printf("\tNO Packets: %u\n", config->numberOfPackets);
 }

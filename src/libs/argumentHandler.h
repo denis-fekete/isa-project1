@@ -34,7 +34,8 @@
  * 
  * @param argc 
  * @param argv 
- * @param config pointer to ProgramConfiguration (Config)
+ * @param config Pointer to the Config structure that holds program settings to 
+ * set desired behaviour of program and also allocated all allocated variables
  */
 void argumentHandler(int argc, char* argv[], Config* config);
 
