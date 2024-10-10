@@ -32,10 +32,14 @@ void* packetLooper(void* vargp)
     unsigned int packetCounter = 0;
     const unsigned char* packetData;
 
-    while(config != NULL && packetCounter < config->numberOfPackets)
+    while(packetCounter < config->numberOfPackets)
     {
         // short unsigned int tabsCorrected = 0;
         int res =  pcap_next_ex(config->cleanup.handle, &header, &packetData);
+
+        if(config == NULL)
+            break;
+
         if(!res ) { errHandling("Capturing packet failed!", 99); }
 
         if(config->verbose)
@@ -60,6 +64,8 @@ void sigintHandler(int num)
 
     destroyConfig(globalConfig);
     globalConfig = NULL;
+
+    exit(0);
 }
 
 int main(int argc, char* argv[])
@@ -84,10 +90,13 @@ int main(int argc, char* argv[])
     // Setup pcap
     config->cleanup.handle = pcapSetup(config, &(config->cleanup.allDevices));
 
+    // loop through received packet/packets that will be received
     packetLooper(config);
 
+    // save results into a files
     saveToFiles(config);
 
+    // memory clean up
     destroyConfig(config);
     
     return 0;

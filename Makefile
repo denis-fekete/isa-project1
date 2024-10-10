@@ -10,8 +10,8 @@ LDFLAGS := -lm
 LPCAP := -lpcap
 
 # Default flags for debug build
-DEBUG_CFLAGS = -pthread -pedantic-errors -Wall -Wextra -Werror -g -DDEBUG
-RELEASE_CFLAGS = -pthread -pedantic-errors -Wall -Wextra -Werror
+DEBUG_CFLAGS = -pedantic-errors -Wall -Wextra -Werror -g -DDEBUG
+RELEASE_CFLAGS = -pedantic-errors -Wall -Wextra -Werror
 
 ifeq ($(DEBUG),true)
 	CFLAGS = $(CVERSTION) $(DEBUG_CFLAGS) -I$(LIB_DIR)

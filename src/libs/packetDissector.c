@@ -128,9 +128,6 @@ void handleMXPreference(packet_t packet)
     printf("%hu ", ntohs(PACKET_2_SHORT(packet + 2) ));
 }
 
-#include <signal.h>
-#include <unistd.h>
-
 unsigned handleOtherSections(packet_t resourceRecords, packet_t packet, Config* config, unsigned ptr, size_t maxLen)
 {
     Buffer* bufferPtr = config->addressToPrint;

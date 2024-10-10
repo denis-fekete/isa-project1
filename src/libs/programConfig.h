@@ -17,8 +17,6 @@
 #include "buffer.h"
 #include "list.h"
 
-#include "pthread.h"
-
 #include "pcap/pcap.h"
 
 // ----------------------------------------------------------------------------
