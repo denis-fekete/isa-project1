@@ -121,6 +121,12 @@ void verboseDNSDissector(packet_t packet)
     printf("RCODE=%u\n",     correctedFlags & RCODE);
 }
 
+/**
+ * @brief Prints MX Preference part of RDATA
+ * 
+ * @param packet Byte array containing raw packet, must start at PREFERENCE part 
+ * of DNS MX packet part
+ */
 void handleMXPreference(packet_t packet)
 {
     // +2 is because first is data rdatalen (2 bytes) and then is rdata 
@@ -135,19 +141,19 @@ unsigned handleOtherSections(packet_t resourceRecords, packet_t packet, Config* 
     unsigned ptrOld = ptr;
 
     // bufferPtr already contains correct NAME, print it
-    VERBOSE(
+    IF_VERBOSE {
         bufferPrint(bufferPtr, 1);
-        );
+    };
 
-    VERBOSE(
+    IF_VERBOSE {
         handleRRTTL(resourceRecords + ptr + TTL_LEN);
-        );
-    VERBOSE(
+    };
+    IF_VERBOSE {
         handleRRClass(resourceRecords + ptr + CLASS_LEN);
-        );
-    VERBOSE(
+    };
+    IF_VERBOSE {
         type = handleRRType(resourceRecords + ptr);
-        );
+    };
 
     ptr += TTL_LEN + CLASS_LEN + TYPE_LEN;
     
@@ -159,9 +165,9 @@ unsigned handleOtherSections(packet_t resourceRecords, packet_t packet, Config* 
         );
 
     if(type == RRType_MX) {
-        VERBOSE(
+        IF_VERBOSE {
             handleMXPreference(resourceRecords + ptr);
-        );
+        };
     }
     bufferClear(bufferPtr);
     ptr += handleRRRData(resourceRecords + ptr, type, packet, bufferPtr, ptr, maxLen);
@@ -169,15 +175,15 @@ unsigned handleOtherSections(packet_t resourceRecords, packet_t packet, Config* 
     STORE_TRANSLATIONS(
         translationNameHandler(bufferPtr, config->translationsList, 0);
         );
-    VERBOSE(
+    IF_VERBOSE {
         bufferPrint(bufferPtr, 1);
-        );
+    };
     STORE_TRANSLATIONS(
         translationNameHandler(bufferPtr, config->translationsList, 0);
         );
     
     bufferClear(bufferPtr);
-    VERBOSE(printf("\n"));
+    IF_VERBOSE { printf("\n"); };
 
     return ptr - ptrOld;
 }

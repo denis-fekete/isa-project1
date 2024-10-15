@@ -75,6 +75,8 @@ bool stringIsValidUInt(char* string)
     return true;
 }
 
+#ifdef DEBUG
+
 /**
  * @brief Prints hexadecimal values of byte array
  * 
@@ -94,49 +96,4 @@ void printBytes(const unsigned char* byteArr, size_t len, char separator)
     }
 }
 
-void printBytesNetwork(const unsigned char* byteArr, size_t len, char separator)
-{
-    for(size_t i = 0; i < len; i++)
-    {
-        printf("%02hhx", (unsigned char)ntohs( byteArr[i] ));
-        if(i < len - 1)
-        {
-            printf("%c", separator);
-        }
-    }
-}
-
-/**
- * @brief Prints characters from byte array into stdout, if
- * character cannot be printed, print '.' instead.
- * 
- * @param byteArr pointer to the byte arrays
- * @param len maximum length of the array
- */
-void printChars(const unsigned char* byteArr, size_t len)
-{
-    for(size_t i = 0; i < len; i++)
-    {
-        if(byteArr[i] >= 0x20 && byteArr[i] <= 0x7e)
-            printf("%c", (unsigned char) byteArr[i]);
-        else
-            printf(".");
-    }
-}
-
-void printCharsNetwork(const unsigned char* byteArr, size_t len)
-{
-    for(size_t i = 0; i < len; i++)
-    {
-        if(byteArr[i] >= 0x20 && byteArr[i] <= 0x7e)
-            printf("%c", ntohs((unsigned char) byteArr[i]));
-        else
-            printf(".");
-        
-        // after 8th byte add space
-        if(i == 7)
-        {
-            printf(" ");
-        }
-    }
-}
+#endif

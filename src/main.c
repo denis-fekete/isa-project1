@@ -20,16 +20,25 @@
 #include "time.h"
 #include "signal.h"
 
+/**
+ * @brief Global Configuration structure that holds all dynamicly allocated data 
+ * and variables that define program mode and behaviour.
+ */
 Config* globalConfig;
 
-void* packetLooper(void* vargp)
+/**
+ * @brief Function that loops and receives packets 
+ * 
+ * @param config Pointer to the Config structure
+ */
+void packetLooper(Config* config)
 {
-    Config* config = (Config*)vargp;
-
      // The header that pcap returns
     struct pcap_pkthdr* header;
 
     unsigned int packetCounter = 0;
+
+    // variable holding raw packet data
     const unsigned char* packetData;
 
     while(packetCounter < config->numberOfPackets)
@@ -37,9 +46,7 @@ void* packetLooper(void* vargp)
         // short unsigned int tabsCorrected = 0;
         int res =  pcap_next_ex(config->cleanup.handle, &header, &packetData);
 
-        if(config == NULL)
-            break;
-
+        
         if(!res ) { errHandling("Capturing packet failed!", 99); }
 
         if(config->verbose)
@@ -56,6 +63,12 @@ void* packetLooper(void* vargp)
     return NULL;
 }
 
+/**
+ * @brief Handle function for SIGINT signals, frees all memory and exits the 
+ * program
+ * 
+ * @param num 
+ */
 void sigintHandler(int num)
 {
     if(num) {}
@@ -81,13 +94,13 @@ int main(int argc, char* argv[])
     // set globalConfig to be same as local, global is for SIGINT handling
     globalConfig = config;
 
-    // sets SIGINT handling
+    // setup SIGINT handling
     signal(SIGINT, sigintHandler);
 
     // Handle program arguments
     argumentHandler(argc, argv, config);
 
-    // Setup pcap
+    // Setup pcap file/network interface and apply filters
     config->cleanup.handle = pcapSetup(config, &(config->cleanup.allDevices));
 
     // loop through received packet/packets that will be received

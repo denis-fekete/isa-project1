@@ -76,6 +76,8 @@ void stringReplace(char* dst, char* src, size_t len);
  */
 bool stringIsValidUInt(char* string);
 
+#ifdef DEBUG
+
 /**
  * @brief Prints hexadecimal values of byte array
  * 
@@ -84,16 +86,8 @@ bool stringIsValidUInt(char* string);
  * @param separator character to be put between characters of byte array
  */
 void printBytes(const unsigned char* byteArr, size_t len, char separator);
-void printBytesNetwork(const unsigned char* byteArr, size_t len, char separator);
-/**
- * @brief Prints characters from byte array into stdout, if
- * character cannot be printed, print '.' instead.
- * 
- * @param byteArr pointer to the byte arrays
- * @param len maximum length of the array
- */
-void printChars(const unsigned char* byteArr, size_t len);
-void printCharsNetwork(const unsigned char* byteArr, size_t len);
+
+#endif
 
 #ifdef DEBUG
     #define debugPrint(...) \

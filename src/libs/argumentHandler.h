@@ -1,13 +1,13 @@
 /**
  * @file argumentHandler.h
  * @author Denis Fekete (xfeket01@vutbr.cz)
- * @brief //TODO:
+ * @brief Header file containing argument handling functions
  * 
  * @copyright Copyright (c) 2024
  * 
  */
-#ifndef ARGUMENT_HANLER_H
-#define ARGUMENT_HANLER_H
+#ifndef ARGUMENT_HANDLER_H
+#define ARGUMENT_HANDLER_H
 
 // ----------------------------------------------------------------------------
 //  Includes
@@ -29,7 +29,7 @@
 // ----------------------------------------------------------------------------
 
 /**
- * @brief Handles program arguements and sets correct 
+ * @brief Handles program arguments and sets correct 
  * ProgramConfiguration (Config)
  * 
  * @param argc 
@@ -44,4 +44,4 @@ void argumentHandler(int argc, char* argv[], Config* config);
  */
 void printCliHelpMenu(const char* executableName);
 
-#endif /*ARGUMENT_HANLER_H*/
+#endif /*ARGUMENT_HANDLER_H*/

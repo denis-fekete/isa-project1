@@ -72,7 +72,7 @@ typedef const unsigned char* packet_t;
         errHandling("Received packet is not long enough, probably malfunctioned packet", ERR_BAD_PACKET); \
     }
 
-#define VERBOSE(arg) if(config->verbose){arg;}
+#define IF_VERBOSE if(config->verbose)
 
 #define STORE_DOMAIN(arg) if(config->domainsFile->data != NULL && (type == RRType_A || type == RRType_AAAA || type == RRType_NS)) {arg;} 
 

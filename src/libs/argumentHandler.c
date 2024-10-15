@@ -1,7 +1,7 @@
 /**
  * @file argumentHandler.c
  * @author Denis Fekete (xfeket01@vutbr.cz)
- * @brief //TODO:
+ * @brief Source file containing argument handling functions
  * 
  * @copyright Copyright (c) 2024
  * 
@@ -24,6 +24,12 @@ static struct option long_options[] =
     {0, 0, 0, 0}
 };
 
+/**
+ * @brief Copies argument from optarg into a Buffer structure
+ * 
+ * @param optarg Pointer to the source optarg
+ * @param buffer Pointer to the destination buffer
+ */
 void copyArgToBuffer(char* optarg, Buffer* buffer)
 {
     size_t optLen = strlen(optarg);
