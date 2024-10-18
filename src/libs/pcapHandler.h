@@ -61,15 +61,25 @@
  * reading captured data
  * 
  * @author Tim Carstens
- * Source: https://www.tcpdump.org/pcap.html
+ * Source: https://www.tcpdump.org/manpages/pcap_open_offline.3pcap.html
  */
 pcap_t* pcapOfflineSetup(Config* config);
+
+/**
+ * @brief Finds all devices/network interfaces on your computer
+ * 
+ * @param config Pointer to the Config structure that holds program settings to 
+ * set desired behaviour of program and also allocated all allocated variables
+ * @param allDevices Pointer to the pointer containing all devices
+ */
+void findDevices(Config* config, pcap_if_t** allDevices);
 
 /**
  * @brief Opens online network interface from which a data traffic will be read
  * 
  * @param config Pointer to the Config structure that holds program settings to 
  * set desired behaviour of program and also allocated all allocated variables
+ * @param allDevices Pointer to the pointer containing all devices
  * @return pcap_t* Returns handle to which is applied filter and then used for
  * reading captured data
  * 
@@ -90,6 +100,6 @@ pcap_t* pcapOnlineSetup(Config* config, pcap_if_t** allDevices, pcap_if_t** devi
  * @author Tim Carstens
  * Source: https://www.tcpdump.org/pcap.html
  */
-pcap_t* pcapSetup(Config* config, pcap_if_t** allDevices);
+pcap_t* pcapSetup(Config* config);
 
 #endif /*PCAP_HANDLER_H*/

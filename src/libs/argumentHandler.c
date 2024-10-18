@@ -16,6 +16,7 @@ Source: https://www.gnu.org/software/libc/manual/html_node/Getopt-Long-Option-Ex
 static struct option long_options[] =
 {
     {"interface",               required_argument,  0, 'i'},
+    {"display-interfaces",      no_argument,        0, 'o'},
     {"help",                    no_argument,        0, 'h'},
     {"pcapfile",                required_argument,  0, 'r'},
     {"verbose",                 no_argument,        0, 'v'},
@@ -54,10 +55,13 @@ void argumentHandler(int argc, char* argv[], Config* config)
     int options_index;
 
     // \0 == PORT_OPTIONS, \1 DISPLAY_OPTIONS
-    while((opt = getopt_long(argc, argv, "vht:i:n:p:r:d:t:", long_options, &options_index)) != -1)
+    while((opt = getopt_long(argc, argv, "ovht:i:n:p:r:d:t:", long_options, &options_index)) != -1)
     {
         switch (opt)
         {
+            case 'o':
+                config->displayDevices = true;
+                break;
             case 'v':
                 config->verbose = true;
                 break;
@@ -99,7 +103,9 @@ void argumentHandler(int argc, char* argv[], Config* config)
     }
 
     // Check mandatory arguments
-    if(config->interface->data == NULL && config->captureMode != OFFLINE_MODE)
+    if( config->interface->data == NULL && 
+        config->captureMode != OFFLINE_MODE && 
+        !config->displayDevices)
     {
         errHandling("Interface not provided", ERR_BAD_ARGS);
     }
@@ -111,7 +117,7 @@ void argumentHandler(int argc, char* argv[], Config* config)
 void printCliHelpMenu(const char* executableName)
 {
     printf(
-        "Usage: ./%s (-i <interface> | -p <pcapfile>) "
+        "Usage: ./%s (-i <interface> | -p <pcapfile> | -o) "
         "[-v] [-d <domainsfile>] "
         "[-t <translationsfile>]\n"
         "\n"
@@ -121,6 +127,10 @@ void printCliHelpMenu(const char* executableName)
         "\t-p | --pcapfile <PATH_TO_FILE>  - Opens a .pcapng file from which \n"
         "\t                                  program will read captured DNS \n"
         "\t                                  communication\n"
+        "\t-o | --display-interfaces        - Displays available interfaces on \n"
+        "\t                                  device. Devices with '*' before them\n"
+        "\t                                  are flagged as non applicable by \n"
+        "\t                                  pcap library.\n"
         "Non-mandatory options:\n"
         "\t-v | --verbose                  - Prints full details about DNS \n"
         "\t                                  communication, otherwise a output\n"

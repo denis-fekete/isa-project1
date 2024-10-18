@@ -136,8 +136,9 @@ void destroyConfig(Config* config)
     free(config->cleanup.pcapErrbuff);
     config->cleanup.pcapErrbuff = NULL;
 
-    // if ended before pcapSetup dont dont close it  
-    pcap_close(config->cleanup.handle);
+    if(config->cleanup.handle != NULL)
+        pcap_close(config->cleanup.handle);
+        
     pcap_freealldevs(config->cleanup.allDevices);
 
     free(config);

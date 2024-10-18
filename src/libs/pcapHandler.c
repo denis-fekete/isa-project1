@@ -39,7 +39,7 @@
  * @return pcap_t* Returns handle to which is applied filter and then used for
  * reading captured data
  * 
- * @author Tim Carstens
+ * @copyright tcpdump.org
  * Source: https://www.tcpdump.org/manpages/pcap_open_offline.3pcap.html
  */
 pcap_t* pcapOfflineSetup(Config* config)
@@ -55,21 +55,17 @@ pcap_t* pcapOfflineSetup(Config* config)
 }
 
 /**
- * @brief Opens online network interface from which a data traffic will be read
+ * @brief Finds all devices/network interfaces on your computer
  * 
  * @param config Pointer to the Config structure that holds program settings to 
  * set desired behaviour of program and also allocated all allocated variables
- * @return pcap_t* Returns handle to which is applied filter and then used for
- * reading captured data
- * 
- * @author Tim Carstens
- * Source: https://www.tcpdump.org/pcap.html
+ * @param allDevices Pointer to the pointer containing all devices
  */
-pcap_t* pcapOnlineSetup(Config* config, pcap_if_t** allDevices, pcap_if_t** device)
+void findDevices(Config* config, pcap_if_t** allDevices)
 {
     // Get list of all devices
     int result = pcap_findalldevs(allDevices, config->cleanup.pcapErrbuff);
-    
+
     // Check for errors
     if(result == PCAP_ERROR)
     {
@@ -82,8 +78,50 @@ pcap_t* pcapOnlineSetup(Config* config, pcap_if_t** allDevices, pcap_if_t** devi
         fprintf(stderr, "Error buffer:  %s\n", config->cleanup.pcapErrbuff);
         errHandling("No devices found!\n", ERR_LIBPCAP);
     }
-    
-    // Looking for correct device
+
+    if(config->displayDevices) 
+    {
+        // get first device 
+        pcap_if_t* device = *allDevices;
+
+        printf("System network interfaces:\n");
+        // print all devices
+        while(device != NULL)
+        {
+            if(device->next != NULL)
+            {
+                if(device->flags == PCAP_IF_CONNECTION_STATUS_NOT_APPLICABLE)
+                    printf("*");
+
+                printf("%s\n", device->name);
+                device = device->next;
+            }
+            else
+            {
+                break;
+            }
+        }
+    }
+}
+
+/**
+ * @brief Opens online network interface from which a data traffic will be read
+ * 
+ * @param config Pointer to the Config structure that holds program settings to 
+ * set desired behaviour of program and also allocated all allocated variables
+ * @param allDevices Pointer to the pointer containing all devices
+ * @return pcap_t* Returns handle to which is applied filter and then used for
+ * reading captured data
+ * 
+ * @author Tim Carstens
+ * Source: https://www.tcpdump.org/pcap.html
+ */
+pcap_t* pcapOnlineSetup(Config* config, pcap_if_t** allDevices, pcap_if_t** device)
+{   
+    // Get all devices
+    findDevices(config, allDevices);
+
+    // Store first device from all devices found
     *device = *allDevices;
 
     // find correct device from list, based on its name, jump out of while if found match
@@ -120,11 +158,13 @@ pcap_t* pcapOnlineSetup(Config* config, pcap_if_t** allDevices, pcap_if_t** devi
  * @author Tim Carstens
  * Source: https://www.tcpdump.org/pcap.html
  */
-pcap_t* pcapSetup(Config* config, pcap_if_t** allDevices)
+pcap_t* pcapSetup(Config* config)
 {
     pcap_t* handle;
     pcap_if_t* device = NULL;
  
+    pcap_if_t** allDevices = &(config->cleanup.allDevices);
+
     if(config->captureMode == OFFLINE_MODE)
         handle = pcapOfflineSetup(config);
     else

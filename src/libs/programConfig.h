@@ -40,12 +40,12 @@ typedef struct ProgramConfiguration
     {
         Buffer* interface;
         Buffer* pcapFileName;
-        void* exitOnNull;
     };
 
     unsigned numberOfPackets;
     char captureMode;
     bool verbose;
+    bool displayDevices;
 
     Buffer* addressToPrint;
 

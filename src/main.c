@@ -46,7 +46,6 @@ void packetLooper(Config* config)
         // short unsigned int tabsCorrected = 0;
         int res =  pcap_next_ex(config->cleanup.handle, &header, &packetData);
 
-        
         if(!res ) { errHandling("Capturing packet failed!", 99); }
 
         if(config->verbose)
@@ -59,8 +58,6 @@ void packetLooper(Config* config)
         packetCounter++;
         printf("\n");
     }
-
-    return NULL;
 }
 
 /**
@@ -100,8 +97,15 @@ int main(int argc, char* argv[])
     // Handle program arguments
     argumentHandler(argc, argv, config);
 
+    if(config->displayDevices)
+    {
+        findDevices(config, &(config->cleanup.allDevices));
+        destroyConfig(config);
+        return 0;
+    }
+
     // Setup pcap file/network interface and apply filters
-    config->cleanup.handle = pcapSetup(config, &(config->cleanup.allDevices));
+    config->cleanup.handle = pcapSetup(config);
 
     // loop through received packet/packets that will be received
     packetLooper(config);
