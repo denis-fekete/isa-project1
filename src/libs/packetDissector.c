@@ -151,17 +151,19 @@ unsigned handleOtherSections(packet_t resourceRecords, packet_t packet, Config* 
     IF_VERBOSE {
         handleRRClass(resourceRecords + ptr + CLASS_LEN);
     };
-    IF_VERBOSE {
-        type = handleRRType(resourceRecords + ptr);
-    };
+    
+    type = handleRRType(resourceRecords + ptr, config->verbose);
 
     ptr += TTL_LEN + CLASS_LEN + TYPE_LEN;
     
+    // store domain names for A,AAAA and NS
     STORE_DOMAIN(
         domainNameHandler(bufferPtr, config->domainList);
         );
+        
+    // store domain name for A,AAAA
     STORE_TRANSLATIONS(
-        translationNameHandler(bufferPtr, config->translationsList, 0);
+        translationNameHandler(bufferPtr, config->translationsList, false);
         );
 
     if(type == RRType_MX) {
@@ -171,15 +173,13 @@ unsigned handleOtherSections(packet_t resourceRecords, packet_t packet, Config* 
     }
     bufferClear(bufferPtr);
     ptr += handleRRRData(resourceRecords + ptr, type, packet, bufferPtr, ptr, maxLen);
-
-    STORE_TRANSLATIONS(
-        translationNameHandler(bufferPtr, config->translationsList, 0);
-        );
+        
     IF_VERBOSE {
         bufferPrint(bufferPtr, 1);
     };
+
     STORE_TRANSLATIONS(
-        translationNameHandler(bufferPtr, config->translationsList, 0);
+        translationNameHandler(bufferPtr, config->translationsList, true);
         );
     
     bufferClear(bufferPtr);
@@ -223,12 +223,13 @@ void rrDissector(packet_t packet, Config* config, size_t maxLen)
             bufferPrint(bufferPtr, 1);
         bufferClear(bufferPtr);
 
-        if(config->verbose)
+        if(config->verbose) {
             // +2 for two zero bytes after name
             handleRRClass(resourceRecords + ptr + 2);
+        }
 
         if(config->verbose)
-            handleRRType(resourceRecords + ptr);
+            handleRRType(resourceRecords + ptr, config->verbose);
         ptr += 4; // +2 for the type, +2 for the type
 
         if(config->verbose)
@@ -340,8 +341,9 @@ unsigned handleRRName(packet_t data, packet_t dataWOptr,
         const unsigned char lengthOctet = (data)[ptr];
         if(lengthOctet == 0)
         {
-            if(bufferPtr->used > 0)
-                bufferSetUsed(bufferPtr, bufferPtr->used - 1);
+            // delete last .
+            // if(bufferPtr->used > 0)
+                // bufferSetUsed(bufferPtr, bufferPtr->used - 1);
 
             ptr++;
             return ptr;
@@ -498,32 +500,32 @@ void handleRRTTL(packet_t data)
  * @brief Prints Resource Record Type onto standard ouput 
  * 
  * @param data Byte array containing raw packet starting at Type position
+ * @param print if set to true prints type
  * @return int Returns detected type
  */
-int handleRRType(packet_t data)
+int handleRRType(packet_t data, bool print)
 {
-    // switch (ntohs(((unsigned short*)(data))[0]))
     switch (ntohs( PACKET_2_SHORT(data) ))
     {
-        case RRType_A:      printf("A ");
+        case RRType_A:      if(print) { printf("A "); }
             return RRType_A;
             break;
-        case RRType_AAAA:   printf("AAAA ");
+        case RRType_AAAA:   if(print) {  printf("AAAA "); }
             return RRType_AAAA;
             break; 
-        case RRType_NS:     printf("NS ");
+        case RRType_NS:     if(print) { printf("NS "); }
             return RRType_NS;
             break; 
-        case RRType_MX:     printf("MX ");
+        case RRType_MX:     if(print) { printf("MX "); }
             return RRType_MX;
             break; 
-        case RRType_SOA:    printf("SOA ");
+        case RRType_SOA:    if(print) { printf("SOA "); }
             return RRType_SOA;
             break; 
-        case RRType_CNAME:  printf("CNAME ");
+        case RRType_CNAME:  if(print) { printf("CNAME "); }
             return RRType_CNAME;
             break; 
-        case RRType_SRV:    printf("SRV ");
+        case RRType_SRV:    if(print) { printf("SRV "); }
             return RRType_SRV;
             break; 
     }

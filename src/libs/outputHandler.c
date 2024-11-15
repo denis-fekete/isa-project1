@@ -45,7 +45,12 @@ void domainNameHandler(Buffer* newEntry, BufferList* list)
 {
     if(listSearch(list, newEntry) == false)
     {
+        // delete last .
+        bufferSetUsed(newEntry, newEntry->used - 1);
+
         listAddRecord(list, newEntry);
+
+        bufferSetUsed(newEntry, newEntry->used + 1);
     }
 }
 
@@ -61,6 +66,9 @@ void translationNameHandler(Buffer* newEntry, BufferList* list, bool secondPart)
 {
     if(!secondPart)
     {
+        // delete last .
+        bufferSetUsed(newEntry, newEntry->used - 1);
+
         listAddRecord(list, newEntry);
     }
     else if(secondPart)

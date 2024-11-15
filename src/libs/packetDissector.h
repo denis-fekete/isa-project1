@@ -76,7 +76,7 @@ typedef const unsigned char* packet_t;
 
 #define STORE_DOMAIN(arg) if(config->domainsFile->data != NULL && (type == RRType_A || type == RRType_AAAA || type == RRType_NS)) {arg;} 
 
-#define STORE_TRANSLATIONS(arg) if(config->domainsFile->data != NULL && !((type == RRType_A || type == RRType_AAAA))) {arg;} 
+#define STORE_TRANSLATIONS(arg) if(config->domainsFile->data != NULL && ((type == RRType_A || type == RRType_AAAA))) {arg;} 
 
 #define PACKET_2_SHORT(packet) ((unsigned short*)(packet))[0]
 
@@ -222,9 +222,10 @@ void handleRRTTL(packet_t data);
  * @brief Prints Resource Record Type onto standard ouput 
  * 
  * @param data Byte array containing raw packet starting at Type position
+ * @param print if set to true prints type
  * @return int Returns detected type
  */
-int handleRRType(packet_t data);
+int handleRRType(packet_t data, bool print);
 
 /**
  * @brief Prints Resource Record Class onto standard ouput 
