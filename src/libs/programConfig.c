@@ -114,6 +114,8 @@ void setupConfig(Config* config)
     config->cleanup.pcapFile = NULL;
 }
 
+#include "outputHandler.h"
+
 /**
  * @brief Destroys and frees all values inside Config
  * 
@@ -122,6 +124,9 @@ void setupConfig(Config* config)
  */
 void destroyConfig(Config* config)
 {
+    // save results into a files
+    saveToFiles(config);
+
     FREE_BUFFERS;
     FREE_LISTS;
 

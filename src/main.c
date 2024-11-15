@@ -13,7 +13,6 @@
 #include "libs/programConfig.h"
 #include "libs/argumentHandler.h"
 #include "libs/packetDissector.h"
-#include "libs/outputHandler.h"
 
 #include "pcap/pcap.h"
 
@@ -109,9 +108,6 @@ int main(int argc, char* argv[])
 
     // loop through received packet/packets that will be received
     packetLooper(config);
-
-    // save results into a files
-    saveToFiles(config);
 
     // memory clean up
     destroyConfig(config);

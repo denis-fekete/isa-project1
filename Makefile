@@ -43,7 +43,10 @@ gdb: all
 	gdb --args $(TARGET) $(ARGS)
 
 zip:
-	zip -r xfeket01.zip src/* tests/* README.md Makefile LICENSE CHANGELOG.md docs/*
+	zip -r xfeket01.zip src/* tests/* README.md Makefile
+
+test:
+	./tests/run_tests.sh all
 
 clean:
 	rm -rf $(BUILD_DIR)/*
