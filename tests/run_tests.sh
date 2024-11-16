@@ -40,11 +40,7 @@ case "$1" in
         test_case "dns_mx"
         sleep 1
 
-        echo "#################################################"
-        echo "Testing: Offline capture:"
-        echo "#################################################"
         ;;
-
     a) ;&
     aaaa) ;&
     ns)

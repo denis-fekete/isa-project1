@@ -55,7 +55,7 @@ void argumentHandler(int argc, char* argv[], Config* config)
     int options_index;
 
     // \0 == PORT_OPTIONS, \1 DISPLAY_OPTIONS
-    while((opt = getopt_long(argc, argv, "ovht:i:n:p:d:t:", long_options, &options_index)) != -1)
+    while((opt = getopt_long(argc, argv, "ovht:i:p:d:t:", long_options, &options_index)) != -1)
     {
         switch (opt)
         {
@@ -89,12 +89,6 @@ void argumentHandler(int argc, char* argv[], Config* config)
             case 'h':
                 printCliHelpMenu("dns-monitor"); //TODO:
                 errHandling("", 0);
-                break;
-            case 'n':
-                if(stringIsValidUInt(optarg))
-                    config->numberOfPackets = atoi(optarg);
-                else
-                    errHandling("TODO:", 1);
                 break;
             default:
                 errHandling("Unknown option. Use -h for help", ERR_UNKNOWN_ARG);

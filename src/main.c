@@ -88,8 +88,6 @@ void packetLooper(Config* config)
 void sigintHandler(int num)
 {
     if(num) {}
-    // set number of packets to capture to 0
-    globalConfig->numberOfPackets = 0;
 
     destroyConfig(globalConfig);
     globalConfig = NULL;
@@ -136,5 +134,3 @@ int main(int argc, char* argv[])
     
     return 0;
 }
-
-

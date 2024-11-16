@@ -39,6 +39,9 @@ You can also use `-t` option to capture all translated IP addresses to the domai
 or<br>
 `$ sudo ./dns-monitor -p {FILE} -t {FILE_WHERE_DOMAIN_NAME_TRANSLATIONS_WILL_BE_STORED}`<br>
 
+Last parameter is a `-o` parameter that prints all available devices that can be used to live capture packets:<br>
+`$ sudo ./dns-monitor -o`<br>
+
 ## Additional features (outside of assignment)
 * Custom number of captured packets with `-n` argument
 * Displaying all available device interfaces `-o` argument
@@ -48,6 +51,7 @@ List of files that were included with program/project
 /
 Makefile
 README.md
+manual.pdf
 src/
    main.c
    libs/
@@ -66,3 +70,9 @@ src/
       programConfig.h
       utils.c
       utils.h
+tests/
+   dns_a_aaaa_ns.hex
+   dns_a_aaaa_ns.pcapng
+   dns_mx.hex
+   dns_soa.hex
+   run_tests.sh

@@ -42,7 +42,6 @@ typedef struct ProgramConfiguration
         Buffer* pcapFileName;
     };
 
-    unsigned numberOfPackets;
     char captureMode;
     bool verbose;
     bool displayDevices;

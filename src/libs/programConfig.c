@@ -23,7 +23,6 @@
  */
 void setupConfig(Config* config)
 {
-    config->numberOfPackets = 1;
     config->captureMode = NO_MODE;
     config->verbose = 0;
     // ------------------------------------------------------------------------
