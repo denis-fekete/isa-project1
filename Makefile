@@ -43,7 +43,7 @@ gdb: all
 	gdb --args $(TARGET) $(ARGS)
 
 pack:
-	tar -cf xfeket01.tar src/* tests/* README.md Makefile manual.pdf
+	tar -cf xfeket01.tar src/* tests/* README Makefile manual.pdf
 
 clean:
 	rm -rf $(BUILD_DIR)/* *.tar ./dns-monitor
