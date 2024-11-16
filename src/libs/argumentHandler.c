@@ -18,7 +18,7 @@ static struct option long_options[] =
     {"interface",               required_argument,  0, 'i'},
     {"display-interfaces",      no_argument,        0, 'o'},
     {"help",                    no_argument,        0, 'h'},
-    {"pcapfile",                required_argument,  0, 'r'},
+    {"pcapfile",                required_argument,  0, 'p'},
     {"verbose",                 no_argument,        0, 'v'},
     {"domainsFile",             no_argument,        0, 'd'},
     {"translationsFile",        no_argument,        0, 't'},
@@ -55,7 +55,7 @@ void argumentHandler(int argc, char* argv[], Config* config)
     int options_index;
 
     // \0 == PORT_OPTIONS, \1 DISPLAY_OPTIONS
-    while((opt = getopt_long(argc, argv, "ovht:i:n:p:r:d:t:", long_options, &options_index)) != -1)
+    while((opt = getopt_long(argc, argv, "ovht:i:n:p:d:t:", long_options, &options_index)) != -1)
     {
         switch (opt)
         {

@@ -176,17 +176,17 @@ unsigned handleRRName(packet_t data, packet_t dataWOptr,
  * @brief Stores correct IP address or domain name into Buffer
  * 
  * @param data Byte array containing raw packet, must start at RDATA
- * @param isIp Sign if A or AAAA type is detected (this will be IP address)
+ * @param type Sign if A or AAAA type is detected (this will be IP address)
  * @param dataWOptr Byte array that starts at DNS part of packet (without offset to RDATA)
- * @param addr2Print Buffer to which characters will be stored into
+ * @param bufferPtr Buffer to which characters will be stored into
  * @param currLen Current length of packet
  * @param maxLen Maximum allowed length of packet
+ * @param config Pointer to the Config structure
  * @return int Return length of RDATA segment
  */
-
-int handleRRRData(packet_t data, unsigned isIp, 
-                    packet_t dataWOptr, Buffer* addr2Print, 
-                    size_t currLen, size_t maxLen);
+int handleRRRData(packet_t data, unsigned type, 
+                    packet_t dataWOptr, Buffer* bufferPtr, 
+                    size_t currLen, size_t maxLen, Config* config);
 
 /**
  * @brief Handles correct printing of SRV packets

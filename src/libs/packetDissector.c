@@ -172,7 +172,7 @@ unsigned handleOtherSections(packet_t resourceRecords, packet_t packet, Config* 
         };
     }
     bufferClear(bufferPtr);
-    ptr += handleRRRData(resourceRecords + ptr, type, packet, bufferPtr, ptr, maxLen);
+    ptr += handleRRRData(resourceRecords + ptr, type, packet, bufferPtr, ptr, maxLen, config);
         
     IF_VERBOSE {
         bufferPrint(bufferPtr, 1);
@@ -380,11 +380,12 @@ unsigned handleRRName(packet_t data, packet_t dataWOptr,
  * @param bufferPtr Buffer to which characters will be stored into
  * @param currLen Current length of packet
  * @param maxLen Maximum allowed length of packet
+ * @param config Pointer to the Config structure
  * @return int Return length of RDATA segment
  */
 int handleRRRData(packet_t data, unsigned type, 
                     packet_t dataWOptr, Buffer* bufferPtr, 
-                    size_t currLen, size_t maxLen)
+                    size_t currLen, size_t maxLen, Config* config)
 {
     if(currLen + 2 > maxLen)
         errHandling("Received packet is not long enough, probably malfunctioned packet", ERR_BAD_PACKET);            
@@ -404,16 +405,20 @@ int handleRRRData(packet_t data, unsigned type,
             printIPv6((uint32_t*) (data + 2), bufferPtr);
         break;
     case RRType_MX:
-        handleRRName(data + RDATALEN_LEN + MX_PREFERENCE_LEN, dataWOptr, bufferPtr, currLen, maxLen);
+        if(config->verbose)
+            handleRRName(data + RDATALEN_LEN + MX_PREFERENCE_LEN, dataWOptr, bufferPtr, currLen, maxLen);
         break;
     case RRType_SOA:;
-        handleSOA(data, dataWOptr, bufferPtr, currLen, maxLen);
+        if(config->verbose)
+            handleSOA(data, dataWOptr, bufferPtr, currLen, maxLen);
         break;
     case RRType_SRV:;
-        handleSRV(data, dataWOptr, bufferPtr, currLen, maxLen);
+        if(config->verbose)
+            handleSRV(data, dataWOptr, bufferPtr, currLen, maxLen);
         break;
     default:
-        handleRRName(data + RDATALEN_LEN, dataWOptr, bufferPtr, currLen, maxLen);
+        if(config->verbose)
+            handleRRName(data + RDATALEN_LEN, dataWOptr, bufferPtr, currLen, maxLen);
         break;
     }
 

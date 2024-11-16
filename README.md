@@ -66,11 +66,3 @@ src/
       programConfig.h
       utils.c
       utils.h
-
-## Bibliography
-https://www.tcpdump.org/pcap.html
-https://www.tcpdump.org/manpages/pcap-filter.7.html
-https://datatracker.ietf.org/doc/html/rfc1035
-https://datatracker.ietf.org/doc/html/rfc3596
-https://www.tcpdump.org/manpages/pcap_open_offline.3pcap.html
-https://www.tcpdump.org/pcap.html

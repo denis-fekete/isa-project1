@@ -42,11 +42,11 @@ $(OBJ_DIR)/libs/%.o: $(LIB_DIR)/%.c
 gdb: all
 	gdb --args $(TARGET) $(ARGS)
 
-zip:
-	zip -r xfeket01.zip src/* tests/* README.md Makefile
+pack:
+	tar -cf xfeket01.tar src/* tests/* README.md Makefile manual.pdf
 
 test:
 	./tests/run_tests.sh all
 
 clean:
-	rm -rf $(BUILD_DIR)/*
+	rm -rf $(BUILD_DIR)/* *.tar ./dns-monitor

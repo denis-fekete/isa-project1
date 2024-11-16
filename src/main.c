@@ -40,13 +40,33 @@ void packetLooper(Config* config)
     // variable holding raw packet data
     const unsigned char* packetData;
 
-    while(packetCounter < config->numberOfPackets)
+    bool loop = true;
+    while(loop)
     {
         // short unsigned int tabsCorrected = 0;
         int res =  pcap_next_ex(config->cleanup.handle, &header, &packetData);
 
-        if(!res ) { errHandling("Capturing packet failed!", 99); }
-
+        switch(res)
+        {
+            case 1: // no problems
+                break;
+            case 0:
+                // buffer timeout expired
+                if(config->captureMode == ONLINE_MODE) {
+                    // continue;
+                }
+                break;
+            case PCAP_ERROR_BREAK:
+                // if in offline mode file is at the end and no more records are left
+                if(config->captureMode == OFFLINE_MODE) {
+                    loop = false;
+                    continue;
+                }
+                break;
+            default:
+                break;
+        }
+        
         if(config->verbose)
             printf("Timestamp: %s\n", getTimestamp(header->ts, config));
         else
@@ -92,6 +112,8 @@ int main(int argc, char* argv[])
 
     // setup SIGINT handling
     signal(SIGINT, sigintHandler);
+    signal(SIGTERM, sigintHandler);
+    signal(SIGQUIT, sigintHandler);
 
     // Handle program arguments
     argumentHandler(argc, argv, config);
