@@ -62,6 +62,7 @@ void frameDissector(packet_t packet, size_t length, Config* config)
 
     if(config->verbose)
         udpDissector(packet + offset);
+        
     offset += sizeof(struct udphdr);
 
     if(length < offset + sizeof(struct DNSHeader))
@@ -335,8 +336,9 @@ unsigned handleRRName(packet_t data, packet_t dataWOptr,
     unsigned ptr = 0;
     for(;1;)
     {
-        if(ptr + currLen > maxLen)
-            errHandling("Received packet is not long enough, probably malfunctioned packet (in handleRRName)", ERR_BAD_PACKET);            
+        // if(ptr + currLen > maxLen) {
+            // errHandling("Received packet is not long enough, probably malfunctioned packet (in handleRRName)", ERR_BAD_PACKET);            
+        // }
 
         const unsigned char lengthOctet = (data)[ptr];
         if(lengthOctet == 0)
@@ -352,6 +354,7 @@ unsigned handleRRName(packet_t data, packet_t dataWOptr,
         {
             const unsigned short jumpPtr = ((data[ptr] << 8) | data[ptr + 1]) & 0x3fff;
             
+            // debugPrint(stdout, "(jumped, ptr=%u, currLen=%li)", ptr, currLen);
             handleRRName(dataWOptr + jumpPtr, dataWOptr, bufferPtr, currLen + ptr, maxLen);
 
             // return ptr + 2 for the jump pointer

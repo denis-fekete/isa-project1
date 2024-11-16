@@ -53,7 +53,7 @@ void packetLooper(Config* config)
             case 0:
                 // buffer timeout expired
                 if(config->captureMode == ONLINE_MODE) {
-                    // continue;
+                    continue;
                 }
                 break;
             case PCAP_ERROR_BREAK:

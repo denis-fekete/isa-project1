@@ -13,11 +13,6 @@ test_case() {
     local domain_file="./../build/domain_names_${test}.txt"
     local translated_file="./../build/translated_${test}.txt"
 
-    sudo ./dns-monitor -i lo -v -d ${domain_file} -t ${translated_file}&
-    pid1=$!
-
-    sleep 0.5
-
     xxd -r -p ${hex} > ${bin} ; nc -u -w1 127.0.0.1 53 < ${bin}
     pid2=$?
 
@@ -48,7 +43,6 @@ case "$1" in
         echo "#################################################"
         echo "Testing: Offline capture:"
         echo "#################################################"
-        sudo ./../dns-monitor -p dns_a_aaaa_ns.pcapng -v -d ./../build/domain_names_offline.txt -t ./../build/translated_offline.txt 
         ;;
 
     a) ;&

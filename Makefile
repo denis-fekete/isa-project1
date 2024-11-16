@@ -45,8 +45,5 @@ gdb: all
 pack:
 	tar -cf xfeket01.tar src/* tests/* README.md Makefile manual.pdf
 
-test:
-	./tests/run_tests.sh all
-
 clean:
 	rm -rf $(BUILD_DIR)/* *.tar ./dns-monitor
