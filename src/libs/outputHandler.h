@@ -51,11 +51,12 @@ void domainNameHandler(Buffer* newEntry, BufferList* list);
  * @brief Saves ipaddress and domain translation into a list
  * 
  * @param newEntry Possible new entry to the list
+ * @param tmp Temporary buffer containing first and second parts joined
  * @param list Pointer to the list
  * @param secondPart On false (if first part) will create a new entry, on 
  * true (second part) will add IP address to it
  */
-void translationNameHandler(Buffer* newEntry, BufferList* list, bool secondPart);
+void translationNameHandler(Buffer* newEntry, Buffer* tmp, BufferList* list, bool secondPart);
 
 /**
  * @brief Save domain names and translated ip addresses to the user provided files

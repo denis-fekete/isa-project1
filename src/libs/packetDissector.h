@@ -74,6 +74,8 @@ typedef const unsigned char* packet_t;
 
 #define IF_VERBOSE if(config->verbose)
 
+#define IF_VERBOSE_AND_VALID if(config->verbose && valid)
+
 #define STORE_DOMAIN(arg) if(config->domainsFile->data != NULL && (type == RRType_A || type == RRType_AAAA || type == RRType_NS)) {arg;} 
 
 #define STORE_TRANSLATIONS(arg) if(config->domainsFile->data != NULL && ((type == RRType_A || type == RRType_AAAA))) {arg;} 

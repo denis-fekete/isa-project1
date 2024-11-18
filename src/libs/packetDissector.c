@@ -25,7 +25,7 @@ void frameDissector(packet_t packet, size_t length, Config* config)
     unsigned offset = sizeof(EthernetHeader);
 
     if(length < offset)
-        errHandling("Received packet is not long enough, probably malfunctioned packet", ERR_BAD_PACKET);
+        errHandling("Received packet is not long enough, probably malfunctioned packet (in frame Dissector 1)", ERR_BAD_PACKET);
 
 
     // unsigned short etherType = ntohs(((unsigned short*) (eth->etherType))[0]);
@@ -34,14 +34,14 @@ void frameDissector(packet_t packet, size_t length, Config* config)
     {
         case ETH_TYPE_IPV4:
             if(length < offset + sizeof(struct iphdr))
-                errHandling("Received packet is not long enough, probably malfunctioned packet", ERR_BAD_PACKET);
+                errHandling("Received packet is not long enough, probably malfunctioned packet (in frame Dissector 2)", ERR_BAD_PACKET);
 
             ipv4Dissector(packet + offset, config->verbose);
             offset += sizeof(struct iphdr);
             break;
         case ETH_TYPE_IPV6:
             if(length < offset + sizeof(struct ip6_hdr))
-                errHandling("Received packet is not long enough, probably malfunctioned packet", ERR_BAD_PACKET);
+                errHandling("Received packet is not long enough, probably malfunctioned packet (in frame Dissector 3)", ERR_BAD_PACKET);
 
             ipv6Dissector(packet + offset, config->verbose);
             offset += sizeof(struct ip6_hdr);
@@ -58,7 +58,7 @@ void frameDissector(packet_t packet, size_t length, Config* config)
     }
 
     if(length < offset + sizeof(struct udphdr))
-        errHandling("Received packet is not long enough, probably malfunctioned packet", ERR_BAD_PACKET);
+        errHandling("Received packet is not long enough, probably malfunctioned packet (in frame Dissector 4)", ERR_BAD_PACKET);
 
     if(config->verbose)
         udpDissector(packet + offset);
@@ -66,7 +66,7 @@ void frameDissector(packet_t packet, size_t length, Config* config)
     offset += sizeof(struct udphdr);
 
     if(length < offset + sizeof(struct DNSHeader))
-        errHandling("Received packet is not long enough, probably malfunctioned packet", ERR_BAD_PACKET);
+        errHandling("Received packet is not long enough, probably malfunctioned packet (in frame Dissector 5)", ERR_BAD_PACKET);
 
     if(config->verbose)
         verboseDNSDissector(packet + offset);
@@ -135,21 +135,21 @@ void handleMXPreference(packet_t packet)
     printf("%hu ", ntohs(PACKET_2_SHORT(packet + 2) ));
 }
 
-unsigned handleOtherSections(packet_t resourceRecords, packet_t packet, Config* config, unsigned ptr, size_t maxLen)
+unsigned handleSectionContent(packet_t resourceRecords, packet_t packet, Config* config, unsigned ptr, size_t maxLen, bool valid)
 {
     Buffer* bufferPtr = config->addressToPrint;
     unsigned type;
     unsigned ptrOld = ptr;
 
     // bufferPtr already contains correct NAME, print it
-    IF_VERBOSE {
+    IF_VERBOSE_AND_VALID {
         bufferPrint(bufferPtr, 1);
     };
 
-    IF_VERBOSE {
+    IF_VERBOSE_AND_VALID {
         handleRRTTL(resourceRecords + ptr + TTL_LEN);
     };
-    IF_VERBOSE {
+    IF_VERBOSE_AND_VALID {
         handleRRClass(resourceRecords + ptr + CLASS_LEN);
     };
     
@@ -164,27 +164,27 @@ unsigned handleOtherSections(packet_t resourceRecords, packet_t packet, Config* 
         
     // store domain name for A,AAAA
     STORE_TRANSLATIONS(
-        translationNameHandler(bufferPtr, config->translationsList, false);
+        translationNameHandler(bufferPtr, config->tmpListEntry, config->translationsList, false);
         );
 
     if(type == RRType_MX) {
-        IF_VERBOSE {
+        IF_VERBOSE_AND_VALID {
             handleMXPreference(resourceRecords + ptr);
         };
     }
     bufferClear(bufferPtr);
     ptr += handleRRRData(resourceRecords + ptr, type, packet, bufferPtr, ptr, maxLen, config);
         
-    IF_VERBOSE {
+    IF_VERBOSE_AND_VALID {
         bufferPrint(bufferPtr, 1);
     };
 
     STORE_TRANSLATIONS(
-        translationNameHandler(bufferPtr, config->translationsList, true);
+        translationNameHandler(bufferPtr, config->tmpListEntry, config->translationsList, true);
         );
     
     bufferClear(bufferPtr);
-    IF_VERBOSE { printf("\n"); };
+    IF_VERBOSE_AND_VALID { printf("\n"); };
 
     return ptr - ptrOld;
 }
@@ -208,30 +208,41 @@ void rrDissector(packet_t packet, Config* config, size_t maxLen)
     // pointer in packet byte array, offset...
     unsigned ptr = 0;
 
+    bool valid = false;
     if(ntohs(dns->noQuestions) > 0)
     {
-        if(config->verbose)
-            printf("\n[Question Section]\n");
-
         ptr += handleRRName(resourceRecords, packet, bufferPtr, ptr, maxLen);     
 
         LEN_CHECK(0);
 
+        valid = isValidTypeOrClass(resourceRecords + ptr);
+
+        IF_VERBOSE{
+            printf("\n[Question Section]\n");
+        };
+
         if(config->domainsFile->data != NULL)
             domainNameHandler(bufferPtr, config->domainList);
 
-        if(config->verbose)
+        IF_VERBOSE_AND_VALID{
             bufferPrint(bufferPtr, 1);
+        }
+
         bufferClear(bufferPtr);
 
-        if(config->verbose) {
+        IF_VERBOSE_AND_VALID{
             // +2 for two zero bytes after name
             handleRRClass(resourceRecords + ptr + 2);
         }
 
-        if(config->verbose)
+        IF_VERBOSE_AND_VALID{
             handleRRType(resourceRecords + ptr, config->verbose);
+        }
         ptr += 4; // +2 for the type, +2 for the type
+
+        if(valid == false) {
+            printf("DNS record type is not supported");
+        }
 
         if(config->verbose)
             printf("\n");
@@ -240,6 +251,7 @@ void rrDissector(packet_t packet, Config* config, size_t maxLen)
     unsigned repeat = 0;
     for(unsigned i = 0; i < 3; i++)
     {
+        // how many records are in each section
         switch(i)
         {
             case 0: repeat = ntohs(dns->noAnswers);
@@ -250,27 +262,30 @@ void rrDissector(packet_t packet, Config* config, size_t maxLen)
                 break;
         }
 
-        if(repeat > 0 && config->verbose)
+        if(repeat > 0 && config->verbose) 
         {
-            switch(i)
+           switch(i)
             {
                 case 0: printf("\n[Answer Section]\n"); break;
                 case 1: printf("\n[Authority Section]\n"); break;
-                case 2: printf("\n[Additional Section]\n"); break;
+                case 2: printf("\n[Additional Section]\n");break;
             }
         }
+
         for(unsigned i = 0; i < repeat; i++)
         {
             ptr += handleRRName(resourceRecords+ptr, packet, bufferPtr, ptr, maxLen);
-
             // +4 for ttl, +2 for class, +2 for type
             LEN_CHECK(8);
 
             // ignore unknown resource record types
-            if(!isValidTypeOrClass(resourceRecords + ptr))
-                continue;
+            valid = isValidTypeOrClass(resourceRecords + ptr);
 
-            ptr += handleOtherSections(resourceRecords, packet, config, ptr, maxLen);
+            if(valid == false) {
+                printf("DNS record type is not supported\n");
+            }
+
+            ptr += handleSectionContent(resourceRecords, packet, config, ptr, maxLen, valid);
         }
     }
 
@@ -336,25 +351,16 @@ unsigned handleRRName(packet_t data, packet_t dataWOptr,
     unsigned ptr = 0;
     for(;1;)
     {
-        // if(ptr + currLen > maxLen) {
-            // errHandling("Received packet is not long enough, probably malfunctioned packet (in handleRRName)", ERR_BAD_PACKET);            
-        // }
-
         const unsigned char lengthOctet = (data)[ptr];
         if(lengthOctet == 0)
         {
-            // delete last .
-            // if(bufferPtr->used > 0)
-                // bufferSetUsed(bufferPtr, bufferPtr->used - 1);
-
             ptr++;
             return ptr;
         }
-        else if((lengthOctet >> 6) & 0x3)
+        else if(lengthOctet & 0xc0)
         {
             const unsigned short jumpPtr = ((data[ptr] << 8) | data[ptr + 1]) & 0x3fff;
             
-            // debugPrint(stdout, "(jumped, ptr=%u, currLen=%li)", ptr, currLen);
             handleRRName(dataWOptr + jumpPtr, dataWOptr, bufferPtr, currLen + ptr, maxLen);
 
             // return ptr + 2 for the jump pointer
@@ -390,15 +396,16 @@ int handleRRRData(packet_t data, unsigned type,
                     packet_t dataWOptr, Buffer* bufferPtr, 
                     size_t currLen, size_t maxLen, Config* config)
 {
-    if(currLen + 2 > maxLen)
-        errHandling("Received packet is not long enough, probably malfunctioned packet", ERR_BAD_PACKET);            
-
+    if(currLen + 2 > maxLen) {
+        errHandling("Received packet is not long enough, probably malfunctioned packet (in handleRRRData 1)", ERR_BAD_PACKET);            
+    }
     // unsigned short dataLen = ntohs(((unsigned short*)(data))[0]);
     unsigned short dataLen = ntohs( PACKET_2_SHORT(data) );
 
-    if(currLen + dataLen + 2 > maxLen)
-        errHandling("Received packet is not long enough, probably malfunctioned packet", ERR_BAD_PACKET);    
-
+    if(currLen + dataLen + 2 > maxLen) {
+        debugPrint(stdout, "(currLen=%li, maxLen=%li, dataLen=%u)", currLen, maxLen, dataLen);
+        errHandling("Received packet is not long enough, probably malfunctioned packet (in handleRRRData 2)", ERR_BAD_PACKET);    
+    }
     switch (type)
     {
     case RRType_A:
@@ -419,9 +426,12 @@ int handleRRRData(packet_t data, unsigned type,
         if(config->verbose)
             handleSRV(data, dataWOptr, bufferPtr, currLen, maxLen);
         break;
-    default:
+    case RRType_NS:;
+    case RRType_CNAME:;
         if(config->verbose)
             handleRRName(data + RDATALEN_LEN, dataWOptr, bufferPtr, currLen, maxLen);
+        break;
+    default:
         break;
     }
 
@@ -718,9 +728,11 @@ void ipv6Dissector(packet_t packet, bool verbose)
     {
         printf("SrcIP: ");
         printIPv6(ipv6->ip6_src.__in6_u.__u6_addr32, NULL);
+        printf("\n");
 
         printf("DstIP: ");
         printIPv6(ipv6->ip6_dst.__in6_u.__u6_addr32, NULL);
+        printf("\n");
     }
     else
     {

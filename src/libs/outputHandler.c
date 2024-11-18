@@ -58,23 +58,27 @@ void domainNameHandler(Buffer* newEntry, BufferList* list)
  * @brief Saves ipaddress and domain translation into a list
  * 
  * @param newEntry Possible new entry to the list
+ * @param tmp Temporary buffer containing first and second parts joined
  * @param list Pointer to the list
  * @param secondPart On false (if first part) will create a new entry, on 
  * true (second part) will add IP address to it
  */
-void translationNameHandler(Buffer* newEntry, BufferList* list, bool secondPart)
+void translationNameHandler(Buffer* newEntry, Buffer* tmp, BufferList* list, bool secondPart)
 {
     if(!secondPart)
     {
         // delete last .
         bufferSetUsed(newEntry, newEntry->used - 1);
-
-        listAddRecord(list, newEntry);
+        bufferCopy(tmp, newEntry);
     }
     else if(secondPart)
     {
-        bufferAddChar(list->last->data, ' ');
-        bufferAppend(list->last->data, newEntry);
+        bufferAddChar(tmp, ' ');
+        bufferAppend(tmp, newEntry);
+        if(listSearch(list, tmp) == false) 
+        {
+            listAddRecord(list, tmp);
+        }
     }
 }
 

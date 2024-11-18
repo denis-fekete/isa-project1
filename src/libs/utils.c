@@ -11,28 +11,6 @@
 #include "utils.h"
 
 /**
- * @brief Prints error message to the standard error ouput (stderr) and exits 
- * program with errorCode
- * 
- * @param errMessage Message to be printed to the stderr
- * @param errorCode Error code that program will exit with
- */
-void errHandling(const char* errMessage, int errorCode)
-{
-    if(errorCode != NO_ERR)
-    {
-        // filter out empty messages
-        if(strcmp(errMessage, "") != 0)
-        {
-            fflush(stdout); // flush contents of stdout so last displayed msg is error
-            fprintf(stderr, "\nERR: %s\n", errMessage);
-        }
-    }
-
-    exit(errorCode);
-}
-
-/**
  * @brief Replaces bytes in dst with bytes from src up to len length
  * 
  * @param dst Destination byte array
@@ -74,6 +52,35 @@ bool stringIsValidUInt(char* string)
     
     return true;
 }
+
+
+#include "programConfig.h"
+
+extern Config* globalConfig;
+
+/**
+ * @brief Prints error message to the standard error ouput (stderr) and exits 
+ * program with errorCode
+ * 
+ * @param errMessage Message to be printed to the stderr
+ * @param errorCode Error code that program will exit with
+ */
+void errHandling(const char* errMessage, int errorCode)
+{
+    if(errorCode != NO_ERR)
+    {
+        // filter out empty messages
+        if(strcmp(errMessage, "") != 0)
+        {
+            fflush(stdout); // flush contents of stdout so last displayed msg is error
+            fprintf(stderr, "\nERR: %s\n", errMessage);
+        }
+    }
+
+    destroyConfig(globalConfig);
+    exit(errorCode);
+}
+
 
 #ifdef DEBUG
 

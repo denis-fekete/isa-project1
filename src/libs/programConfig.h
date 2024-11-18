@@ -36,16 +36,16 @@ typedef struct CleanUp {
 
 typedef struct ProgramConfiguration 
 {
-    union
-    {
-        Buffer* interface;
-        Buffer* pcapFileName;
-    };
-
     char captureMode;
     bool verbose;
     bool displayDevices;
 
+    union
+    {
+        Buffer* interface;
+        Buffer* pcapFileName;
+        Buffer* tmpListEntry;
+    };
     Buffer* addressToPrint;
 
     BufferList* domainList;

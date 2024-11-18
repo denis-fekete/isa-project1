@@ -111,6 +111,7 @@ void setupConfig(Config* config)
     config->cleanup.allDevices = NULL;
     config->cleanup.handle = NULL;
     config->cleanup.pcapFile = NULL;
+    config->displayDevices = false;
 }
 
 #include "outputHandler.h"
