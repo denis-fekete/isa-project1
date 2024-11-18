@@ -240,7 +240,7 @@ void rrDissector(packet_t packet, Config* config, size_t maxLen)
         }
         ptr += 4; // +2 for the type, +2 for the type
 
-        if(valid == false) {
+        if(valid == false && config->verbose) {
             printf("DNS record type is not supported");
         }
 
@@ -281,7 +281,7 @@ void rrDissector(packet_t packet, Config* config, size_t maxLen)
             // ignore unknown resource record types
             valid = isValidTypeOrClass(resourceRecords + ptr);
 
-            if(valid == false) {
+            if(valid == false && config->verbose) {
                 printf("DNS record type is not supported\n");
             }
 
