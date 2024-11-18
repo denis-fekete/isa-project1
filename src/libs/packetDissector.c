@@ -112,13 +112,13 @@ void verboseDNSDissector(packet_t packet)
         ((unsigned char) (ntohs(dns->transactionID) >> 8)),
         ((unsigned char) ntohs(dns->transactionID)));
     printf("Flags:");
-    printf("QR=%c, ",        (correctedFlags & QR)? '1' : '0');
-    printf("OPCODE=%u, ",    (correctedFlags & OPCODE) >> 11);
-    printf("AA=%c, ",        (correctedFlags & AA)? '1' : '0');
-    printf("TC=%c, ",        (correctedFlags & TC)? '1' : '0');
-    printf("RD=%c, ",        (correctedFlags & RD)? '1' : '0');
-    printf("RA=%c, ",        (correctedFlags & RA)? '1' : '0');
-    printf("Z=%u, ",         (correctedFlags & _Z) >> 4);
+    printf("QR=%c,",        (correctedFlags & QR)? '1' : '0');
+    printf("OPCODE=%u,",    (correctedFlags & OPCODE) >> 11);
+    printf("AA=%c,",        (correctedFlags & AA)? '1' : '0');
+    printf("TC=%c,",        (correctedFlags & TC)? '1' : '0');
+    printf("RD=%c,",        (correctedFlags & RD)? '1' : '0');
+    printf("RA=%c,",        (correctedFlags & RA)? '1' : '0');
+    printf("Z=%u,",         (correctedFlags & _Z) >> 4);
     printf("RCODE=%u\n",     correctedFlags & RCODE);
 }
 
@@ -607,8 +607,8 @@ void udpDissector(packet_t packet)
 {
     struct udphdr* udp = (struct udphdr*) packet; 
 
-    printf("SrcPort: %hu\n", ntohs(udp->source));
-    printf("DstPort: %hu\n", ntohs(udp->dest));
+    printf("SrcPort: UDP/%hu\n", ntohs(udp->source));
+    printf("DstPort: UDP/%hu\n", ntohs(udp->dest));
 }
 
 

@@ -71,5 +71,6 @@ tests/
    dns_a_aaaa_ns.hex
    dns_a_aaaa_ns.pcapng
    dns_mx.hex
+   dns_seznam.pcapng
    dns_soa.hex
    run_tests.sh
